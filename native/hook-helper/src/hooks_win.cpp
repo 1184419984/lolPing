@@ -37,28 +37,30 @@ bool isExtendedVk(uint32_t vk) {
 
 bool isKeyDown(uint32_t vk) { return (GetAsyncKeyState(static_cast<int>(vk)) & 0x8000) != 0; }
 
-// True when the foreground window covers its monitor (within 2%): a game — or any fullscreen app —
-// owns the screen, so trigger+click chords belong to it, not to a wheel. Measured on CS2: its
-// fullscreen window is a MAXIMIZED SDL window that keeps WS_CAPTION, so the caption style must NOT
-// be checked; the price is that maximized windows also count when the taskbar auto-hides (their
-// work area then equals the monitor). Shell surfaces (desktop, taskbar) are excluded. Runs once
-// per would-be gesture: microseconds.
-bool foregroundIsFullscreen() {
+// True when the click at (x, y) lands on a monitor that the foreground window covers whole: a game, or any
+// fullscreen app, owns that screen, so trigger+click belongs to it, not to a wheel. A click on another
+// monitor still gestures. "Covers" means the window rect contains the monitor rect: borderless fullscreen
+// equals it, and CS2's fullscreen window is a maximized SDL window that keeps WS_CAPTION and overflows it.
+// A maximized normal window stops at the work area, unless the monitor reserves none (auto-hide taskbar,
+// or no taskbar on that display): there only caption-less windows count, so CS2-style windows are missed.
+// Shell surfaces (desktop, taskbar) are excluded. No cross-process calls: safe inside the hook callback.
+bool clickIsOnFullscreenApp(int x, int y) {
   const HWND fg = GetForegroundWindow();
   if (fg == nullptr) return false;
   wchar_t cls[64];
   if (GetClassNameW(fg, cls, 64) != 0 &&
       (lstrcmpiW(cls, L"Progman") == 0 || lstrcmpiW(cls, L"WorkerW") == 0 || lstrcmpiW(cls, L"Shell_TrayWnd") == 0))
     return false;
-  RECT wr;
-  if (!GetWindowRect(fg, &wr)) return false;
   const HMONITOR mon = MonitorFromWindow(fg, MONITOR_DEFAULTTONEAREST);
+  if (mon == nullptr || mon != MonitorFromPoint(POINT{x, y}, MONITOR_DEFAULTTONEAREST)) return false;
+  RECT wr;
   MONITORINFO mi{};
   mi.cbSize = sizeof(mi);
-  if (mon == nullptr || !GetMonitorInfoW(mon, &mi)) return false;
-  const LONG ww = wr.right - wr.left, wh = wr.bottom - wr.top;
-  const LONG mw = mi.rcMonitor.right - mi.rcMonitor.left, mh = mi.rcMonitor.bottom - mi.rcMonitor.top;
-  return mw > 0 && mh > 0 && ww * 100 >= mw * 98 && wh * 100 >= mh * 98;
+  if (!GetWindowRect(fg, &wr) || !GetMonitorInfoW(mon, &mi)) return false;
+  const RECT& m = mi.rcMonitor;
+  if (wr.left > m.left || wr.top > m.top || wr.right < m.right || wr.bottom < m.bottom) return false;
+  if (EqualRect(&mi.rcWork, &m)) return (GetWindowLongPtrW(fg, GWL_STYLE) & WS_CAPTION) != WS_CAPTION;
+  return true;
 }
 
 void sendInjects(const std::vector<Inject>& injects) {
@@ -187,7 +189,7 @@ int runHooks(Output& out) {
   Decision decision;
   g_decision = &decision;
   g_out = &out;
-  decision.setFullscreenProbe(foregroundIsFullscreen);
+  decision.setFullscreenProbe(clickIsOnFullscreenApp);
   const DWORD threadId = GetCurrentThreadId();
   g_hookThreadId = threadId;
   MSG msg;

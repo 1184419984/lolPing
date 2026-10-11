@@ -283,7 +283,7 @@ static void test_fullscreen_game_keeps_the_click() {
   Decision d;
   d.setConfig(c);
   bool fullscreen = true;
-  d.setFullscreenProbe([&fullscreen] { return fullscreen; });
+  d.setFullscreenProbe([&fullscreen](int, int) { return fullscreen; });
   d.onEvent(kd(ALT));
   Result r = d.onEvent(md(Btn::Left, 100, 100));
   CHECK(!r.swallow);  // the game keeps the click
@@ -307,7 +307,7 @@ static void test_fullscreen_probe_ignored_when_disabled() {
   Decision d;
   d.setConfig(c);
   bool consulted = false;
-  d.setFullscreenProbe([&consulted] { consulted = true; return true; });
+  d.setFullscreenProbe([&consulted](int, int) { consulted = true; return true; });
   d.onEvent(kd(ALT));
   Result r = d.onEvent(md(Btn::Left, 100, 100));
   CHECK(r.swallow);  // the gesture starts despite "fullscreen"

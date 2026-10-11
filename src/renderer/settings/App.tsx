@@ -159,9 +159,11 @@ function SettingsPage({ settings: s, status, update }: { settings: Settings; sta
         <SwitchRow icon={<CursorClick24Regular />} title={t.clickPing(trigger)}
           description={t.clickPingDesc(trigger)}
           checked={s.clickPing} onChange={(v) => void update({ clickPing: v })} dim={off} />
-        <SwitchRow icon={<Games24Regular />} title={t.gameCheck}
-          description={t.gameCheckDesc}
-          checked={s.gameCheck} onChange={(v) => void update({ gameCheck: v })} dim={off} />
+        {!MAC && ( // the macOS helper has no fullscreen probe yet
+          <SwitchRow icon={<Games24Regular />} title={t.gameCheck}
+            description={t.gameCheckDesc}
+            checked={s.gameCheck} onChange={(v) => void update({ gameCheck: v })} dim={off} />
+        )}
 
         <div className="section" id="toggle">{t.navToggle}</div>
         <SettingRow icon={<Keyboard24Regular />} title={t.toggleShortcut} description={t.toggleShortcutDesc}>

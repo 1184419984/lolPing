@@ -153,7 +153,7 @@ Result Decision::setSuspended(bool on) {
   return r;
 }
 
-void Decision::setFullscreenProbe(std::function<bool()> probe) { fullscreenProbe_ = std::move(probe); }
+void Decision::setFullscreenProbe(std::function<bool(int x, int y)> probe) { fullscreenProbe_ = std::move(probe); }
 
 Result Decision::tick(uint64_t nowMs) {
   Result r;
@@ -301,7 +301,7 @@ void Decision::onMouseDown(const InputEvent& e, Result& r) {
   if (ping != emote) {
     // A fullscreen app (a game) owns the screen: its clicks belong to it, not to a wheel. Probed
     // only when a gesture would actually start, so plain clicks never pay for the check.
-    if (cfg_.gameCheck && fullscreenProbe_ && fullscreenProbe_()) return;
+    if (cfg_.gameCheck && fullscreenProbe_ && fullscreenProbe_(e.x, e.y)) return;
     r.swallow = true;
     markSwallow();
     state_ = State::Pending;

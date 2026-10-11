@@ -130,7 +130,7 @@ States: `Idle`, `Pending` (trigger held + button down, not yet moved past the th
 | Situation | Action |
 |---|---|
 | Disabled | Pass everything through; only the toggle hotkey is checked |
-| Mouse down that would start a gesture, `gameCheck` on and the foreground window fullscreen (covers ≥98% of its monitor, no caption; desktop and taskbar excluded) | Pass through; the fullscreen app keeps every click |
+| Mouse down that would start a gesture, `gameCheck` on and the foreground window fullscreen on the clicked monitor (its rect contains the monitor; where the monitor reserves no work area, only caption-less windows count; desktop and taskbar excluded; Windows only) | Pass through; the fullscreen app keeps every click |
 | Left button down while trigger held | **Swallow**, record the point, go to `Pending` |
 | `Pending`, movement > `dragThresholdPx` | Send `wheelOpen{x,y}` with the *press* point, go to `Wheel` |
 | `Wheel`, mouse move | Send `wheelMove{x,y}`. Movement is not swallowed, so the cursor still moves. |
