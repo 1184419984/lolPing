@@ -63,6 +63,7 @@ void sendInjects(const std::vector<Inject>& injects) {
     } else {
       in.type = INPUT_KEYBOARD;
       in.ki.wVk = static_cast<WORD>(i.vk);
+      in.ki.wScan = static_cast<WORD>(MapVirtualKeyW(i.vk, MAPVK_VK_TO_VSC));  // games read scan codes
       in.ki.dwFlags = (i.kind == InjectKind::KeyUp ? KEYEVENTF_KEYUP : 0u) | (isExtendedVk(i.vk) ? KEYEVENTF_EXTENDEDKEY : 0u);
       in.ki.dwExtraInfo = kSelfMarker;
     }
@@ -95,6 +96,17 @@ bool apply(const Result& r) {
   return r.swallow;
 }
 
+// Like apply(), for a real button or key event. Injects still in the queue were decided for earlier events,
+// so passing this one through now would let it overtake them: a replayed press landing after its real
+// release leaves the button stuck down. Such an event is swallowed and replayed behind the queue instead.
+bool applyInOrder(const InputEvent& e, const Inject& replay) {
+  const bool behind = !e.selfInjected && !g_pendingInjects.empty();
+  if (apply(g_decision->onEvent(e))) return true;
+  if (!behind) return false;
+  queueInjects({replay});
+  return true;
+}
+
 LRESULT CALLBACK mouseProc(int code, WPARAM wParam, LPARAM lParam) {
   if (code == HC_ACTION) {
     const auto* m = reinterpret_cast<const MSLLHOOKSTRUCT*>(lParam);
@@ -121,7 +133,13 @@ LRESULT CALLBACK mouseProc(int code, WPARAM wParam, LPARAM lParam) {
         known = false;
     }
     if (known && e.kind == EvKind::MouseDown) g_decision->syncKeyStates(isKeyDown);
-    if (known && apply(g_decision->onEvent(e))) return 1;
+    if (known) {
+      // Moves may overtake queued injects: a replayed press just lands at the newer cursor position.
+      const bool swallow = e.kind == EvKind::MouseMove
+          ? apply(g_decision->onEvent(e))
+          : applyInOrder(e, {e.kind == EvKind::MouseDown ? InjectKind::ButtonDown : InjectKind::ButtonUp, e.btn});
+      if (swallow) return 1;
+    }
   }
   return CallNextHookEx(nullptr, code, wParam, lParam);
 }
@@ -134,7 +152,7 @@ LRESULT CALLBACK keyProc(int code, WPARAM wParam, LPARAM lParam) {
     e.vk = k->vkCode;
     e.timeMs = GetTickCount64();
     e.selfInjected = (k->flags & LLKHF_INJECTED) != 0 && k->dwExtraInfo == kSelfMarker;
-    if (apply(g_decision->onEvent(e))) return 1;
+    if (applyInOrder(e, {e.kind == EvKind::KeyDown ? InjectKind::KeyDown : InjectKind::KeyUp, Btn::None, e.vk})) return 1;
   }
   return CallNextHookEx(nullptr, code, wParam, lParam);
 }
