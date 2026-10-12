@@ -1,12 +1,15 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { SettingsStore } from '../../src/main/settingsStore';
 import { DEFAULT_SETTINGS, type Settings } from '../../src/shared/settings';
 
 const tempDir = () => mkdtempSync(join(tmpdir(), 'lolping-'));
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/** Waits for the save load() scheduled on its own to reach disk: a fixed sleep raced slow CI runners. */
+const savedTagColor = (dir: string, color: number) =>
+  vi.waitFor(() => expect(JSON.parse(readFileSync(join(dir, 'settings.json'), 'utf8')).tagColor).toBe(color), { timeout: 3000 });
 
 describe('SettingsStore', () => {
   it('uses defaults when there is no file', () => {
@@ -28,7 +31,7 @@ describe('SettingsStore', () => {
     const dir = tempDir();
     writeFileSync(join(dir, 'settings.json'), JSON.stringify({ version: 1, volume: 30 })); // a 0.2.1 file: no room keys
     const first = new SettingsStore(dir, 10, 'win', { name: 'darren', color: 3 }).load();
-    await sleep(80);
+    await savedTagColor(dir, 3);
     const second = new SettingsStore(dir, 10, 'win', { name: 'darren', color: 6 }).load();
     expect([first.tagColor, second.tagColor]).toEqual([3, 3]);
     expect(second.volume).toBe(30);
@@ -37,7 +40,7 @@ describe('SettingsStore', () => {
   it('saves on the very first run too', async () => {
     const dir = tempDir();
     new SettingsStore(dir, 10, 'win', { name: 'darren', color: 2 }).load();
-    await sleep(80);
+    await savedTagColor(dir, 2);
     expect(new SettingsStore(dir, 10, 'win', { name: 'darren', color: 7 }).load().tagColor).toBe(2);
   });
 
