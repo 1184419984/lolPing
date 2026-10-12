@@ -1,6 +1,7 @@
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <tlhelp32.h>
 
 #include <iostream>
 #include <memory>
@@ -183,6 +184,41 @@ LRESULT CALLBACK keyProc(int code, WPARAM wParam, LPARAM lParam) {
   return CallNextHookEx(nullptr, code, wParam, lParam);
 }
 
+// The process that started us, opened for waiting; null if it is already gone. Its creation time must precede
+// ours: a PID can be reused once its process exits.
+HANDLE openParent() {
+  const HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+  if (snap == INVALID_HANDLE_VALUE) return nullptr;
+  DWORD parentPid = 0;
+  PROCESSENTRY32W pe{};
+  pe.dwSize = sizeof(pe);
+  for (BOOL ok = Process32FirstW(snap, &pe); ok; ok = Process32NextW(snap, &pe)) {
+    if (pe.th32ProcessID == GetCurrentProcessId()) {
+      parentPid = pe.th32ParentProcessID;
+      break;
+    }
+  }
+  CloseHandle(snap);
+  const HANDLE parent = parentPid != 0 ? OpenProcess(SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION, FALSE, parentPid) : nullptr;
+  if (parent == nullptr) return nullptr;
+  FILETIME parentStart, ownStart, unused1, unused2, unused3;
+  if (!GetProcessTimes(parent, &parentStart, &unused1, &unused2, &unused3) ||
+      !GetProcessTimes(GetCurrentProcess(), &ownStart, &unused1, &unused2, &unused3) ||
+      CompareFileTime(&parentStart, &ownStart) > 0) {
+    CloseHandle(parent);
+    return nullptr;
+  }
+  return parent;
+}
+
+// Electron is gone: ask the hook thread to quit, and if it hasn't within 2 s (wedged in a hook callback),
+// end the process. A helper left behind keeps its global hooks and slows every input event.
+void quitWhenOrphaned(DWORD hookThreadId) {
+  PostThreadMessageW(hookThreadId, WM_QUIT, 0, 0);
+  Sleep(2000);
+  TerminateProcess(GetCurrentProcess(), 0);
+}
+
 }  // namespace
 
 int runHooks(Output& out) {
@@ -210,9 +246,16 @@ int runHooks(Output& out) {
       auto* text = new std::string(std::move(line));
       if (!PostThreadMessageW(threadId, kWmCommand, 0, reinterpret_cast<LPARAM>(text))) delete text;
     }
-    PostThreadMessageW(threadId, WM_QUIT, 0, 0);  // stdin closed: Electron is gone
+    quitWhenOrphaned(threadId);  // stdin closed: Electron is gone
   });
   reader.detach();
+  // stdin alone can miss Electron's death: another process may hold the pipe open.
+  if (const HANDLE parent = openParent()) {
+    std::thread([threadId, parent] {
+      WaitForSingleObject(parent, INFINITE);
+      quitWhenOrphaned(threadId);
+    }).detach();
+  }
   out.ready();
 
   while (GetMessageW(&msg, nullptr, 0, 0) > 0) {
