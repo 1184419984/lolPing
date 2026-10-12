@@ -188,6 +188,7 @@ void handleCommand(const std::string& text) {
 int runHooks(Output& out) {
   Decision decision;
   decision.setMaskMenuKeys(false);
+  decision.setTapThrough(false);  // apply() here cannot inject keys, so a held-back key could never be typed
   g_decision = &decision;
   g_out = &out;
 

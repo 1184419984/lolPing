@@ -86,6 +86,10 @@ class Decision {
   // Windows opens the menu bar / Start menu on a lone Alt / Win key-up, so a swallowed press while one is held
   // gets a mask key before that key-up. macOS has no such behaviour: its hook layer turns this off.
   void setMaskMenuKeys(bool on) { maskMenuKeys_ = on; }
+  // Tap-through for custom-key triggers: a lone tap of the key is typed as usual (replayed on release),
+  // and a key pressed while it is held flushes it first, so typing keeps working. Needs key injection,
+  // which only the Windows hook layer has: macOS turns this off and keeps swallowing the key.
+  void setTapThrough(bool on) { tapThrough_ = on; }
 
   // Resync with the OS: forget keys we believe are down but isDown(vk) says are up
   // (key-ups the hook never saw: Win+L, Ctrl+Alt+Del, UAC, hook reinstall). Never marks a key as down.
@@ -117,6 +121,7 @@ class Decision {
   bool startsGesture(WheelKind k, Btn btn) const;
   void markSwallow();
   void cancelGesture(Result& r);
+  bool flushHeldBack(uint32_t vk, Result& r);
   void onKeyDown(const InputEvent& e, Result& r);
   void onKeyUp(const InputEvent& e, Result& r);
   void onMouseDown(const InputEvent& e, Result& r);
@@ -136,6 +141,13 @@ class Decision {
   // that chord belongs to another program, so clicks pass through until every trigger is released.
   bool foreignKey_ = false;
   bool maskMenuKeys_ = true;
+  bool tapThrough_ = true;
+  // Tap-through state (custom-key triggers only, 0 = none):
+  // heldBackVk_: the trigger key is down but not sent yet; a drag consumes it, a lone release types it.
+  // typedVk_: the held-back key was flushed because another key was pressed (the user is typing):
+  // its repeats and its real key-up now pass through to the OS.
+  uint32_t heldBackVk_ = 0;
+  uint32_t typedVk_ = 0;
   WheelKind owner_ = WheelKind::Ping;  // the wheel the current gesture belongs to
   Btn dragBtn_ = Btn::None;
   int px_ = 0;
