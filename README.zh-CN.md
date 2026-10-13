@@ -158,6 +158,15 @@ npm run dev
 - **演示页：** [`site`](site) 在浏览器中运行同一套信号层代码，用一个小的输入适配层代替输入助手。README 里的 GIF 就是用它录制的。
 - **设计文档：** [docs/design.md](docs/design.md)（英文）介绍了通信协议、输入状态机和多显示器坐标换算；[docs/design-macos.md](docs/design-macos.md)（英文）介绍了 Mac 版的移植。
 
+## 参与开发
+
+欢迎提交 PR 和想法。开始之前：
+
+- 阅读 [AGENTS.md](AGENTS.md)（英文）：项目结构、每个改动都要保持的行为，以及代码、测试和提交信息的约定。如果你用 AI 工具，也让它读取这个文件。Claude Code 通过 `CLAUDE.md` 读取它，其他大多数 AI 工具会自动读取 `AGENTS.md`。
+- PR 标题使用 [Conventional Commits](https://www.conventionalcommits.org/zh-hans/) 格式，例如 `fix(helper): keep clicks in order after a cancelled wheel`。PR 以 squash 方式合并，标题就是 `main` 上的提交信息。
+- 一个 PR 只做一件事，并填写模板。CI 在 Windows 和 macOS 上都通过后才能合并。
+- 较大的想法请先开 issue 或 [discussion](https://github.com/darrenprx/lolPing/discussions)，先商量好做法再动手。
+
 ## 信号素材
 
 `assets/textures` 中的图标和 `assets/sounds` 中的音效提取自本地安装的英雄联盟。游戏更新后如何重新提取，请见 [`tools/extract-assets`](tools/extract-assets)。`assets/emotes` 中的表情动画、图标和音效同样归 Riot Games 所有，由 `tools/extract-assets --emotes` 从同一份安装中烘焙生成。

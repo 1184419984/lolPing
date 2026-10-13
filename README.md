@@ -158,6 +158,15 @@ Bump `version` in `package.json`, commit, then push a matching tag such as `v0.2
 - **Demo page:** [`site`](site) runs the same overlay code in the browser, with a small input shim in place of the helper. The README GIF is recorded from it.
 - **Design notes:** [docs/design.md](docs/design.md) covers the protocol, the input state machine and the multi-monitor maths. [docs/design-macos.md](docs/design-macos.md) covers the Mac port.
 
+## Contributing
+
+Pull requests and ideas are welcome. Before you start:
+
+- Read [AGENTS.md](AGENTS.md): the layout, the behaviour every change keeps, and the code, test and commit conventions. If you use an AI tool, give it that file too. Claude Code reads it through `CLAUDE.md`, and most other agents read `AGENTS.md` on their own.
+- Title the pull request in [Conventional Commits](https://www.conventionalcommits.org/) style, such as `fix(helper): keep clicks in order after a cancelled wheel`. Pull requests are squash-merged, so the title becomes the commit on `main`.
+- Keep one change per pull request and fill in the template. CI has to pass on Windows and macOS before anything merges.
+- For bigger ideas, open an issue or a [discussion](https://github.com/darrenprx/lolPing/discussions) first, so we can agree on the approach before you write it.
+
 ## Ping assets
 
 The icons in `assets/textures` and the sounds in `assets/sounds` come from a local League of Legends install. [`tools/extract-assets`](tools/extract-assets) explains how to extract them again after a patch. The emote animations, icons and sounds in `assets/emotes` are © Riot Games too, and `tools/extract-assets --emotes` bakes them from the same install.
