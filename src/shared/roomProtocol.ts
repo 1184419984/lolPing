@@ -1,4 +1,4 @@
-import { isEmoteRefShape, type EmoteRef } from './emotes';
+import { ANNOUNCED_MAX, HASH_RE, isEmoteRefShape, type EmoteRef } from './emotes';
 import { isPingId, type PingId } from './pings';
 import { isTagColor } from './roomColors';
 
@@ -26,7 +26,7 @@ export interface PresenceMsg extends Base {
   name: string;
   color: number;
   status: MemberStatus;
-  /** Added in 0.6.0: the 32-hex hashes of the custom emotes on our wheel and centre, at most 9. Older apps leave it out. */
+  /** Added in 0.5.2: the 32-hex hashes of the custom emotes on our wheel and centre, at most 9. Older apps leave it out. */
   em: string[];
 }
 export interface PingMsg extends Base {
@@ -47,14 +47,14 @@ export interface EmoteMsg extends Base {
   x: number;
   y: number;
 }
-/** Added in 0.6.0: asks the peer named `to` for the still of custom emote `h`. `need` lists chunk indexes, [] = all of them. */
+/** Added in 0.5.2: asks the peer named `to` for the still of custom emote `h`. `need` lists chunk indexes, [] = all of them. */
 export interface WantMsg extends Base {
   t: 'want';
   to: string;
   h: string;
   need: number[];
 }
-/** Added in 0.6.0: one slice `i` of `n` of the still `h`, base64 in `b`. A chunk's sealed packet stays under MAX_PACKET. */
+/** Added in 0.5.2: one slice `i` of `n` of the still `h`, base64 in `b`. A chunk's sealed packet stays under MAX_PACKET. */
 export interface ChunkMsg extends Base {
   t: 'chunk';
   h: string;
@@ -86,15 +86,12 @@ const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object
 const isUint = (v: unknown): v is number => Number.isSafeInteger(v) && (v as number) >= 0;
 const isUnit = (v: unknown): v is number => typeof v === 'number' && v >= 0 && v <= 1;
 
-/** A custom emote hash as it travels: 32 lower-case hex characters. */
-export const HASH_RE = /^[0-9a-f]{32}$/;
 /** Chunk `b` is at most this many base64 characters (750 bytes); 17 chunks carry a full 12 KB still. */
 export const EMOTE_CHUNK_B64_MAX = 1000;
 export const EMOTE_CHUNKS_MAX = 17;
 /** Chunk indexes in a `want`'s `need`: at most this many entries, each below EMOTE_CHUNKS_MAX. */
 export const EMOTE_NEED_MAX = 64;
 const B64_RE = /^[A-Za-z0-9+/]+={0,2}$/;
-const ANNOUNCED_MAX = 9;
 
 /** The announced hashes, rebuilt: well-formed and distinct, the first ANNOUNCED_MAX. Anything else means none. */
 function emList(raw: unknown): string[] {

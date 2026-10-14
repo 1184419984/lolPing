@@ -168,7 +168,8 @@ export class EmoteTransfer {
     const full = new Uint8Array(a.bytes);
     let at = 0;
     for (let i = 0; i < a.n; i++) {
-      const part = a.parts.get(i)!;
+      const part = a.parts.get(i);
+      if (!part) return; // finish only runs once every index is in
       full.set(part, at);
       at += part.length;
     }
