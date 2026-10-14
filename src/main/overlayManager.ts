@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain, screen, type Display, type WebContents } from 'electron';
+import { BrowserWindow, ipcMain, screen, type Display, type Rectangle, type WebContents } from 'electron';
 import { EventEmitter } from 'node:events';
 import { isEmoteRefShape, type EmoteArt, type EmoteRef } from '../shared/emotes';
 import {
@@ -28,6 +28,13 @@ export interface SharedEmote {
 }
 
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+
+/**
+ * Where a display's overlay window goes. Windows takes a shown window that covers a whole display for a full-screen app:
+ * the taskbar drops behind it and an auto-hidden one won't slide up. One DIP short of the bottom edge, it doesn't.
+ */
+export const overlayBounds = (d: Display): Rectangle =>
+  IS_MAC ? d.bounds : { ...d.bounds, height: d.bounds.height - 1 };
 
 /**
  * One transparent, click-through, always-on-top window per display.
@@ -189,14 +196,14 @@ export class OverlayManager extends EventEmitter {
     }
     for (const d of displays) {
       const win = this.windows.get(d.id);
-      if (win) win.setBounds(d.bounds);
+      if (win) win.setBounds(overlayBounds(d));
       else this.windows.set(d.id, this.createWindow(d));
     }
   }
 
   private createWindow(d: Display): BrowserWindow {
     const win = new BrowserWindow({
-      ...d.bounds,
+      ...overlayBounds(d),
       transparent: true,
       backgroundColor: '#00000000',
       frame: false,
@@ -225,7 +232,7 @@ export class OverlayManager extends EventEmitter {
     win.webContents.on('did-finish-load', () => win.webContents.send('overlay:settings', this.settings));
     win.once('ready-to-show', () => {
       win.showInactive();
-      win.setBounds(d.bounds); // re-apply: mixed-DPI setups can size the first frame wrong
+      win.setBounds(overlayBounds(d)); // re-apply: mixed-DPI setups can size the first frame wrong
     });
     void loadPage(win, 'overlay');
     return win;
