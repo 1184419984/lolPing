@@ -6,6 +6,8 @@ import { renameWithRetry } from './settingsStore';
 /** At most this many stills and this many bytes of friends' emotes are kept; the rest is evicted least recently used first. */
 export const CACHE_MAX_FILES = 200;
 export const CACHE_MAX_BYTES = 4 * 1024 * 1024;
+/** A crashed put leaves a `.tmp` behind; a live one owns its file for milliseconds, so only tmp this old is swept. */
+const STALE_TMP_MS = 5 * 60_000;
 const NAME_RE = /^([0-9a-f]{32})\.webp$/;
 
 /** Owns `<settings folder>/emote-cache/`: verified stills that arrived over a room, capped, evicted by last use. */
@@ -84,18 +86,30 @@ export class EmoteCache {
         // gone between readdir and stat: it is no longer served either
       }
     }
-    this.known = new Set(entries.map((e) => e.hash)); // whatever left the folder without us is forgotten here
     entries.sort((a, b) => b.at - a.at);
+    const kept = new Set<string>();
     let files = 0;
     let bytes = 0;
     for (const e of entries) {
       if (files < CACHE_MAX_FILES && bytes + e.size <= CACHE_MAX_BYTES) {
         files++;
         bytes += e.size;
+        kept.add(e.hash);
         continue;
       }
       this.lastUse.delete(e.hash);
       await rm(join(this.dir, `${e.hash}.webp`), { force: true }).catch(() => undefined);
+    }
+    // What the sweep leaves is exactly what has() may answer, evictions included: no stale index until the next put.
+    this.known = kept;
+    for (const name of names) {
+      if (!name.endsWith('.tmp')) continue;
+      try {
+        const s = await stat(join(this.dir, name));
+        if (this.now() - s.mtimeMs > STALE_TMP_MS) await rm(join(this.dir, name), { force: true }).catch(() => undefined);
+      } catch {
+        // vanished on its own: done
+      }
     }
   }
 }

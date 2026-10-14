@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  ASSEMBLY_TIMEOUT_MS, EMOTE_CHUNK_BYTES, EmoteTransfer, MAX_ASSEMBLIES, MAX_PENDING_BYTES, REASKS_MAX, type EmoteTransferDeps,
+  ASSEMBLY_TIMEOUT_MS, EMOTE_CHUNK_BYTES, EmoteTransfer, LAN_TOTAL_CHUNKS_PER_TICK, MAX_ASSEMBLIES, MAX_PENDING_BYTES,
+  REASKS_MAX, type EmoteTransferDeps,
 } from '../../src/main/emoteTransfer';
 import type { ChunkMsg, WantMsg } from '../../src/shared/roomProtocol';
 
@@ -35,11 +36,15 @@ function harness() {
   const files = new Map<string, Uint8Array>();
   const cache = new Map<string, Uint8Array>();
   const routes = new Map<string, 'lan' | 'shared' | null>();
+  const reads = { still: 0 };
   const state = { enabled: true, tokens: 10, announced: [] as string[] };
   const deps: EmoteTransferDeps = {
     now: Date.now,
     have: (h) => files.has(h) || cache.has(h),
-    still: (h) => files.get(h) ?? null,
+    still: (h) => {
+      reads.still++;
+      return files.get(h) ?? null;
+    },
     announced: () => state.announced,
     enabled: () => state.enabled,
     put: (h, b) => void cache.set(h, b),
@@ -50,7 +55,7 @@ function harness() {
   };
   const t = new EmoteTransfer(deps);
   return {
-    t, out, cache, files, routes,
+    t, out, cache, files, routes, reads,
     setEnabled: (on: boolean) => (state.enabled = on),
     setTokens: (n: number) => (state.tokens = n),
     setAnnounced: (list: string[]) => (state.announced = list),
@@ -298,5 +303,64 @@ describe('EmoteTransfer: serving', () => {
     await vi.advanceTimersByTimeAsync(100);
     const chunks = h.out.filter((o) => o.body.t === 'chunk');
     expect(chunks.map((c) => c.body.i).sort()).toEqual([1, 3]); // index 1 queued once
+  });
+});
+
+describe('EmoteTransfer: audit regressions', () => {
+  it('serves nothing while Show friends’ custom emotes is off, and drops pending work on the next tick', async () => {
+    const h = harness();
+    const bytes = still();
+    const hash = hashOf(bytes);
+    h.files.set(hash, bytes);
+    h.routes.set(REQUESTER, 'lan');
+    h.setAnnounced([hash]);
+    h.setEnabled(false);
+    h.t.onWant(wantOf(hash, [])); // an attacker pulling at our stills while the switch is off: nothing leaves
+    expect(h.out).toHaveLength(0);
+    expect(h.reads.still).toBe(0);
+
+    h.setEnabled(true);
+    h.t.onWant(wantOf(hash, []));
+    h.setEnabled(false);
+    const announced2 = hashOf(still(EMOTE_CHUNK_BYTES * 3));
+    h.routes.set(ANNOUNCER, 'lan');
+    h.t.announced(ANNOUNCER, [announced2]); // a pending assembly...
+    await vi.advanceTimersByTimeAsync(100);
+    expect(h.t.stats).toEqual({ assembling: 0, sending: 0 }); // ...is dropped, not paused, and no re-ask wants go out
+  });
+
+  it('a straggler chunk for a still already stored opens no zombie assembly', () => {
+    const h = harness();
+    const bytes = still(EMOTE_CHUNK_BYTES * 2);
+    const hash = hashOf(bytes);
+    h.cache.set(hash, bytes); // already here
+    h.t.onChunk(chunkOf(hash, 0, 2, bytes.subarray(0, EMOTE_CHUNK_BYTES)));
+    expect(h.t.stats.assembling).toBe(0);
+  });
+
+  it('caps the whole LAN egress at LAN_TOTAL_CHUNKS_PER_TICK, however many requesters ask', async () => {
+    const h = harness();
+    const bytes = still(EMOTE_CHUNK_BYTES * 6);
+    const hash = hashOf(bytes);
+    h.files.set(hash, bytes);
+    h.setAnnounced([hash]);
+    for (let n = 0; n < 6; n++) {
+      const peer = `${n}`.repeat(16);
+      h.routes.set(peer, 'lan');
+      h.t.onWant({ ...wantOf(hash, []), peer });
+    }
+    await vi.advanceTimersByTimeAsync(100);
+    expect(h.out.filter((o) => o.body.t === 'chunk')).toHaveLength(LAN_TOTAL_CHUNKS_PER_TICK);
+  });
+
+  it('reads the still from its source once per queue, whatever the want flood', () => {
+    const h = harness();
+    const bytes = still(EMOTE_CHUNK_BYTES * 4);
+    const hash = hashOf(bytes);
+    h.files.set(hash, bytes);
+    h.routes.set(REQUESTER, 'lan');
+    h.setAnnounced([hash]);
+    for (let n = 0; n < 50; n++) h.t.onWant(wantOf(hash, []));
+    expect(h.reads.still).toBe(1);
   });
 });

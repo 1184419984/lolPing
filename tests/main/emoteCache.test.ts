@@ -7,6 +7,7 @@ import { CACHE_MAX_BYTES, CACHE_MAX_FILES, EmoteCache } from '../../src/main/emo
 const HASH = (n: number): string => n.toString(16).padStart(32, '0');
 const stillOf = (n: number, size: number): Uint8Array => new Uint8Array(size).fill(n + 1);
 const webpNames = (dir: string): string[] => readdirSync(dir).filter((f) => f.endsWith('.webp'));
+const NAME = /^([0-9a-f]{32})\.webp$/;
 
 let dir: string;
 let cache: EmoteCache;
@@ -86,5 +87,28 @@ describe('EmoteCache', () => {
     rmSync(join(dir, `${HASH(3)}.webp`));
     await cache.sweep();
     expect(cache.has(HASH(3))).toBe(false);
+  });
+});
+
+describe('EmoteCache: audit regressions', () => {
+  it('forgets an evicted hash at once: no stale has() until the next put', async () => {
+    for (let n = 0; n < CACHE_MAX_FILES + 1; n++) await cache.put(HASH(n), stillOf(n, 100));
+    expect(webpNames(dir)).toHaveLength(CACHE_MAX_FILES);
+    expect(cache.has(HASH(0))).toBe(false); // the eviction is visible to has() at once, without another put
+    const onDisk = readdirSync(dir).map((f) => NAME.exec(f)?.[1]).filter((h) => h !== undefined) as string[];
+    for (const h of onDisk) expect(cache.has(h)).toBe(true); // and nothing on disk is missing from the index
+  });
+
+  it('sweeps temp files a crashed write left, once they are old enough', async () => {
+    mkdirSync(dir, { recursive: true });
+    const old = join(dir, `${HASH(1)}.webp.tmp`);
+    const fresh = join(dir, `${HASH(2)}.webp.tmp`);
+    writeFileSync(old, 'left by a crash');
+    writeFileSync(fresh, 'owned by a live put');
+    const ago = new Date(Date.now() - 10 * 60_000);
+    utimesSync(old, ago, ago);
+    await cache.sweep();
+    expect(existsSync(old)).toBe(false);
+    expect(existsSync(fresh)).toBe(true); // a live put owns its tmp for milliseconds: it stays
   });
 });

@@ -14,6 +14,8 @@ export const REASKS_MAX = 3;
 /** Chunk pacing: LAN unicast per requester per tick; over relays a chunk only goes when 5 ping tokens remain. */
 export const TRANSFER_TICK_MS = 100;
 export const LAN_CHUNKS_PER_TICK = 2;
+/** Chunks per tick across every queue and requester: the LAN egress ceiling, ~60 KB/s however many members ask. */
+export const LAN_TOTAL_CHUNKS_PER_TICK = 8;
 export const RELAY_KEEP_TOKENS = 5;
 
 interface Assembly {
@@ -93,20 +95,24 @@ export class EmoteTransfer {
 
   /** Another member asks for one of our stills. Only hashes in our own current announcement are served. */
   onWant(w: WantMsg): void {
+    if (!this.deps.enabled()) return; // the switch stops both directions: nothing of ours leaves either
     if (!this.deps.announced().includes(w.h)) return;
-    const bytes = this.deps.still(w.h);
-    if (!bytes) return;
-    const n = Math.ceil(bytes.length / EMOTE_CHUNK_BYTES);
-    const queue = this.sends.get(w.h) ?? { bytes, n, lan: new Map(), shared: new Set() };
-    this.sends.set(w.h, queue);
-    const want = w.need.length > 0 ? w.need.filter((i) => i < n) : Array.from({ length: n }, (_, i) => i);
-    if (want.length === 0) return;
     const lane = this.deps.routeOf(w.peer);
+    if (lane !== 'lan' && lane !== 'shared') return;
+    let queue = this.sends.get(w.h);
+    if (!queue) {
+      const bytes = this.deps.still(w.h); // read once per queue: a flood of wants can't make it read the disk each time
+      if (!bytes) return;
+      queue = { bytes, n: Math.ceil(bytes.length / EMOTE_CHUNK_BYTES), lan: new Map(), shared: new Set() };
+      this.sends.set(w.h, queue);
+    }
+    const want = w.need.length > 0 ? w.need.filter((i) => i < queue.n) : Array.from({ length: queue.n }, (_, i) => i);
+    if (want.length === 0) return;
     if (lane === 'lan') {
       const set = queue.lan.get(w.peer) ?? new Set<number>();
       for (const i of want) set.add(i);
       queue.lan.set(w.peer, set);
-    } else if (lane === 'shared') {
+    } else {
       for (const i of want) queue.shared.add(i); // a broadcast reaches the requester as well as everyone else
     }
   }
@@ -118,6 +124,7 @@ export class EmoteTransfer {
     const part = Buffer.from(c.b, 'base64');
     let a = this.assemblies.get(c.h);
     if (!a) {
+      if (this.deps.have(c.h)) return; // already stored: a straggler chunk must not open a zombie assembly
       if (this.assemblies.size >= MAX_ASSEMBLIES || this.pendingBytes() + part.length > MAX_PENDING_BYTES) return;
       a = { n: 0, parts: new Map(), bytes: 0, firstAt: this.deps.now(), lastAt: this.deps.now(), ask: c.peer, reasks: 0 };
       this.assemblies.set(c.h, a);
@@ -183,6 +190,12 @@ export class EmoteTransfer {
   /** Sender pacing and receiver re-asks. Anything thrown is dropped: a timer must never take the app down. */
   private tick(): void {
     try {
+      if (!this.deps.enabled()) {
+        this.assemblies.clear(); // the switch stops both directions: pending work is dropped, not paused
+        this.sends.clear();
+        return;
+      }
+      let egress = 0; // chunks sent this tick, across every queue and requester
       const ours = new Set(this.deps.announced());
       for (const [hash, q] of [...this.sends]) {
         if (!ours.has(hash)) {
@@ -190,10 +203,11 @@ export class EmoteTransfer {
           continue;
         }
         for (const [peer, need] of [...q.lan]) {
-          for (let k = 0; k < LAN_CHUNKS_PER_TICK && need.size > 0; k++) {
+          for (let k = 0; k < LAN_CHUNKS_PER_TICK && need.size > 0 && egress < LAN_TOTAL_CHUNKS_PER_TICK; k++) {
             const i = need.values().next().value as number;
             need.delete(i);
             this.deps.sendToLan(peer, this.chunkBody(hash, i, q));
+            egress++;
           }
           if (need.size === 0) q.lan.delete(peer);
         }

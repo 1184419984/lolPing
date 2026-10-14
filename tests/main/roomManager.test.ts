@@ -868,3 +868,77 @@ describe('emote transfers', () => {
     expect(gonePeers).toEqual(['1111111111111111', '2222222222222222']);
   });
 });
+
+describe('emote transfer gating (audit regressions)', () => {
+  const hash = '0123456789abcdef0123456789abcdef';
+
+  beforeEach(() => {
+    vi.useFakeTimers({ now: 1_780_000_000_000 });
+    lan = new FakeTransport('lan');
+    pings = [];
+    emotes = [];
+    toasts = [];
+    saved = [];
+    room = new RoomManager({
+      transports: [lan], now: () => Date.now(), randomBytes: (n) => new Uint8Array(n).fill(0xab),
+      deriveKeys: async () => KEYS, appVersion: '0.6.0', profile: () => profile,
+      resolveTarget: (d) => (d === 1 ? { displayId: 100, width: 1920, height: 1080 } : null),
+      announceEmotes: () => [],
+    });
+  });
+
+  afterEach(() => {
+    room.quit();
+    vi.useRealTimers();
+  });
+
+  it('ignores new members once the room is full, however many presences arrive', async () => {
+    await joinActive();
+    for (let n = 0; n < 12; n++) new Remote(`${n}`.repeat(16), `lan:${n}`, lan).presence();
+    const remote = room.state().members.filter((m) => !m.self);
+    expect(remote).toHaveLength(8); // MAX_MEMBERS: the ninth and on never became members
+  });
+
+  it('lets at most two members share one LAN address', async () => {
+    await joinActive();
+    new Remote('1111111111111111', 'lan:same', lan).presence();
+    new Remote('2222222222222222', 'lan:same', lan).presence();
+    new Remote('3333333333333333', 'lan:same', lan).presence(); // a rebound is fine, a third is forgery
+    new Remote('4444444444444444', 'lan:other', lan).presence();
+    expect(room.state().members.filter((m) => !m.self)).toHaveLength(3);
+  });
+
+  it('counts want and chunk messages against their own per-member bucket', async () => {
+    await joinActive();
+    const alex = new Remote('1111111111111111', 'lan:a', lan);
+    alex.presence();
+    const seen: RoomMessage[] = [];
+    room.on('want', (w: RoomMessage) => seen.push(w));
+    room.on('chunk', (c: RoomMessage) => seen.push(c));
+    for (let n = 0; n < 100; n++) lan.deliver(alex.key, alex.packet({ t: 'want', to: room.self, h: hash, need: [] }));
+    expect(seen).toHaveLength(60); // the first sixty pass, the flood behind them meets the wall
+    await vi.advanceTimersByTimeAsync(1000);
+    lan.deliver(alex.key, alex.packet({ t: 'want', to: room.self, h: hash, need: [] }));
+    expect(seen).toHaveLength(61); // the bucket refills for a well-behaved sender
+  });
+
+  it('neither fetches nor serves stills while paused, and resumes on the next presence', async () => {
+    await joinActive();
+    const seen: RoomMessage[] = [];
+    let announced: { peer: string; hashes: string[] }[] = [];
+    room.on('want', (w: RoomMessage) => seen.push(w));
+    room.on('chunk', (c: RoomMessage) => seen.push(c));
+    room.on('emotes', (peer: string, hashes: string[]) => announced.push({ peer, hashes }));
+    room.setStatusFlags({ paused: true, roomMuted: false });
+    const alex = new Remote('1111111111111111', 'lan:a', lan);
+    alex.presence({ em: [hash] });
+    lan.deliver(alex.key, alex.packet({ t: 'want', to: room.self, h: hash, need: [] }));
+    lan.deliver(alex.key, alex.packet({ t: 'chunk', h: hash, i: 0, n: 2, b: 'QQ==' }));
+    expect(seen).toHaveLength(0);
+    expect(announced).toHaveLength(0); // no prefetch either: the transfer layer hears nothing
+
+    room.setStatusFlags({ paused: false, roomMuted: false });
+    alex.presence({ em: [hash] });
+    expect(announced).toHaveLength(1); // the next presence after unpausing starts prefetch again
+  });
+});
