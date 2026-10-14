@@ -59,7 +59,7 @@ vi.mock('electron', () => ({
 import { AppTray, trayUpdateFrom } from '../../src/main/tray';
 import { strings } from '../../src/shared/i18n';
 
-const room = { joinClipboard: vi.fn(), create: vi.fn(), copyCode: vi.fn(), setMuted: vi.fn(), leave: vi.fn(), openSettings: vi.fn() };
+const room = { joinClipboard: vi.fn(), create: vi.fn(), copyCode: vi.fn(), setMuted: vi.fn(), leave: vi.fn(), openSettings: vi.fn(), openChat: vi.fn() };
 const update = { check: vi.fn(), start: vi.fn() };
 const handlers = { openSettings: vi.fn(), setEnabled: vi.fn(), retryHelper: vi.fn(), quit: vi.fn(), room, update };
 
@@ -124,12 +124,16 @@ describe('AppTray', () => {
     const items = roomMenu();
     expect(items[0]).toMatchObject({ label: 'PING-7KQ4M-2HXTR · 3 people', enabled: false });
     expect(items.filter((i) => i.type !== 'separator').map((i) => i.label)).toEqual([
-      'PING-7KQ4M-2HXTR · 3 people', 'Copy code', 'Mute room', 'Leave room', 'Room settings…',
+      'PING-7KQ4M-2HXTR · 3 people', 'Copy code', 'Open chat', 'Mute room', 'Leave room', 'Room settings…',
     ]);
     const mute = items.find((i) => i.label === 'Mute room')!;
     expect(mute).toMatchObject({ type: 'checkbox', checked: true });
     mute.click!({ checked: false });
     expect(room.setMuted).toHaveBeenCalledWith(false);
+    items.find((i) => i.label === 'Open chat')?.click?.({});
+    expect(room.openChat).toHaveBeenCalled();
+    tray.set('off', false);
+    expect(roomMenu().find((i) => i.label === 'Open chat')?.enabled).toBe(false);
     tray.setRoom({ code: 'PING-7KQ4M-2HXTR', count: 1, muted: false });
     expect(roomMenu()[0].label).toBe('PING-7KQ4M-2HXTR · 1 person');
   });

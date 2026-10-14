@@ -1,6 +1,6 @@
 import { Button, Input, Slider, Spinner } from '@fluentui/react-components';
 import {
-  ArrowSync24Regular, Color24Regular, Desktop24Regular, Globe24Regular, Image24Regular, Person24Regular, PeopleCommunity24Regular,
+  ArrowSync24Regular, Chat24Regular, Color24Regular, Desktop24Regular, Globe24Regular, Image24Regular, Person24Regular, PeopleCommunity24Regular,
   SpeakerMute24Regular, TopSpeed24Regular, Warning24Regular,
 } from '@fluentui/react-icons';
 import { useEffect, useRef, useState } from 'react';
@@ -127,6 +127,9 @@ function InRoom({ room, allowInternet }: { room: RoomState; allowInternet: boole
           <Button onClick={() => void api.leaveRoom()}>{t.roomLeave}</Button>
         </div>
       </div>
+      <SettingRow icon={<Chat24Regular />} title={t.chatTitle} description={t.chatShortcutHint}>
+        <Button onClick={() => void api.openChat()}>{t.chatOpen}</Button>
+      </SettingRow>
       {room.lan === 'unavailable' ? (
         <div className="card permission">
           <span className="icon"><Warning24Regular /></span>

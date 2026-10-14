@@ -1,0 +1,2405 @@
+diff --git a/README.md b/README.md
+index 07d6b1c1dac371790a4354b25aa6411618f555f3..4bb335a5ee3061842bd430c9de4e8d9a64a5c33c 100644
+--- a/README.md
++++ b/README.md
+@@ -106,7 +106,9 @@ Join a room and everyone in it sees your pings on their own screen, at the same
+ - **Emotes** travel like pings: friends see yours on their own screen with your name under it. Your own images reach friends as a small still picture; animations stay on your computer. Friends' images are kept in a small cache on your computer. **Show friends' custom emotes** in Settings → Room turns this off both ways: nothing is sent or fetched, and friends' images show as "?". Friends on v0.4 or older don't see emotes, and the Room page says so under their names.
+ - **Mute room**, muting one person, and an **Incoming ping and emote limit** (up to Unlimited, counted for both together) keep the spam under control. Pausing lolPing with the shortcut pauses room pings and emotes too.
+ - A room holds up to 8 people. Leave and create a new room to get rid of someone.
+-- **Privacy:** pings, emotes, your emote images and names are end-to-end encrypted with a key made from the room code. People on your network can see your local IP address. With internet connections on, public relays see your IP address, an anonymous room ID and when you send, but never your pings, emotes, images or name. Turn **Allow internet connections** off to stay on your local network.
++- **Room chat:** while you are in a room and lolPing is enabled, press **Ctrl + Alt + Enter** to focus the chat box. You can also click **Open chat** in **Settings → Room** or the tray's **Room** menu, including when another app owns that shortcut. The lower-left HUD follows League's in-game chat: coloured text lines on the desktop, with a thin rectangular input underneath while typing. It grows to fit its content and stays anchored at the bottom, so empty transparent space does not intercept clicks. Press **Enter** to send and close the input, or **Esc** or click away to close it. Messages from friends, and your own messages, appear passively for about 10 seconds without taking focus. The input helper is suspended while the box is active, and chat follows the existing pause and mute controls. Older apps ignore chat messages.
++- The current room session keeps up to 100 entries, including local and remote pings with their existing icons and localized names alongside chat text. Preview pings are excluded, and adding a ping entry creates no extra network packet. Each line shows the local time in 24-hour `[HH:mm]` format. Leaving or switching rooms clears the history. A message is at most 256 Unicode code points and 800 UTF-8 JSON-encoded bytes; the byte limit can make the practical limit lower for non-ASCII text. Chat has its own sending rate bucket.
++- **Privacy:** pings, emotes, your emote images, chat text and names are end-to-end encrypted with a key made from the room code. Chat uses the same LAN and relay connections; it adds no new host. People on your network can see your local IP address. With internet connections on, public relays see your IP address, an anonymous room ID and when you send, but never your pings, emotes, images, chat text or name. Turn **Allow internet connections** off to stay on your local network.
+ 
+ ## Known limitations
+ 
+diff --git a/README.zh-CN.md b/README.zh-CN.md
+index c954476b57c513c6b992e1040e87d87e3fbd8ca0..a78e4c4e6af8cb878b8aa10bc93f111d2ab96d8e 100644
+--- a/README.zh-CN.md
++++ b/README.zh-CN.md
+@@ -106,7 +106,9 @@ lolPing 在启动 10 秒后向 GitHub 检查一次新版本，之后每 6 小时
+ - **表情**和信号一样发给房间：朋友会在自己的屏幕上看到，下面带着你的名字。你自己的图片会以一张小的静态图发给朋友，动图只留在你的电脑上。朋友的图片保存在你电脑上的一个小缓存里。关闭设置 → 房间里的**显示好友的自定义表情**后，两边都停止：不发送也不获取，朋友的图片显示为“?”。还在用 v0.4 或更早版本的朋友看不到表情，房间页面会在他们的名字下面提示。
+ - **房间静音**、单独静音某个人，以及**接收信号和表情上限**（可选不限，两者合并计算）可以控制刷屏。用快捷键暂停 lolPing 时，房间里的信号和表情也会一起暂停。
+ - 一个房间最多 8 人。想踢掉某人，就离开并创建一个新房间。
+-- **隐私：** 信号、表情、表情图片和名字使用由房间码生成的密钥进行端到端加密。同一网络中的人可以看到你的本地 IP 地址。开启互联网连接后，公共中继可以看到你的 IP 地址、匿名房间 ID 和发送时间，但永远看不到你的信号、表情、图片和名字。关闭**允许互联网连接**即可只在局域网中使用。
++- **房间聊天：** 加入房间且 lolPing 已启用时，按 **Ctrl + Alt + Enter** 聚焦聊天框。也可以点击**设置 → 房间**或托盘的**房间**菜单中的**打开聊天**，其他程序占用了快捷键时同样可用。左下角采用《英雄联盟》局内聊天的样式：彩色文字直接叠在桌面上，输入时在下方显示一条细长的矩形输入框。聊天框高度随内容变化，始终贴着桌面底部，避免空白透明区域拦截点击。按 **Enter** 发送并收起输入框，按 **Esc** 或点击其他位置收起。朋友发来的消息和自己发送的消息会被动显示约 10 秒，不会抢焦点。聊天框打开时会暂停输入助手；聊天遵循现有的暂停与静音规则。旧版程序会忽略聊天消息。
++- 当前房间会话最多保留 100 条记录，其中包括本机和远程信号：沿用现有的信号图标和本地化名称，与聊天文字显示在同一历史中。预览信号不会计入，也不会因为记录信号而额外发送网络数据包。每行使用本地 24 小时制 `[HH:mm]` 时间。离开或切换房间时清空记录。每条消息最多 256 个 Unicode 码点、800 个 UTF-8 JSON 编码字节；非 ASCII 文本可能因字节上限而更早达到限制。聊天使用独立的发送速率桶。
++- **隐私：** 信号、表情、表情图片、聊天文字和名字使用由房间码生成的密钥进行端到端加密。聊天沿用现有的局域网和中继连接，不增加新的主机。同一网络中的人可以看到你的本地 IP 地址。开启互联网连接后，公共中继可以看到你的 IP 地址、匿名房间 ID 和发送时间，但永远看不到你的信号、表情、图片、聊天文字和名字。关闭**允许互联网连接**即可只在局域网中使用。
+ 
+ ## 已知限制
+ 
+diff --git a/docs/design.md b/docs/design.md
+index 26b620dcd2739e80a029c72f234eafd2ccbac233..6ee769f353875eed262d8a1319549bc3b4bc9999 100644
+--- a/docs/design.md
++++ b/docs/design.md
+@@ -345,3 +345,13 @@ A second wheel, opened by its own key, places a League emote (a short animation
+ - **Custom stills travel (v0.5.2, `src/main/emoteTransfer.ts` and `src/main/emoteCache.ts`):** presence gains `em`, the distinct hashes on the wheel and centre, at most 9 (validated to at most 9 32-hex strings; an app before 0.5.2 just leaves the field out). A member whose announced hash is neither in the library nor the cache asks for it with `want {to, h, need}` and gets the still in `chunk {h, i, n, b}` messages: 750 bytes of base64 per chunk, at most 17 per still, each sealed packet under the 1,200-byte cap. Over LAN chunks go unicast to the requester, two per 100 ms tick and at most eight per tick across the whole room (~60 KB/s egress however many members ask); over relays they are broadcast on the ping bucket but only while five of its ten burst tokens stay, so pings keep their burst and an idle sender streams a still in a few seconds. Wants over relays follow the same rule: joining a room can find 9 hashes per member at once, and the ones without a spare token go on later ticks. want and chunk messages count against their own per-member bucket (60/s), a paused lolPing neither fetches nor serves stills, the room cap is judged on every presence (not only at settle) and one LAN address backs at most two members — a room member cannot grow the room afterwards to farm serving quota. The receiver assembles at most 16 hashes and 256 KB at once, drops an assembly after 60 s or three unanswered re-asks 3 s apart, and keeps a finished one only when it hashes back to its ID and passes the import checks (a still WebP of at most 12,288 bytes and 160 px) — the hash is the identity, so nobody can substitute another member's image, and the bytes are only ever written as `<hash>.webp` in the cache and only ever decoded by Chromium as an `<img>`. The cache (`<settings folder>/emote-cache/`) holds at most 200 stills and 4 MB, evicting least recently used; a still shown on screen counts as used. Its index is read once at launch, which also clears temp files a crashed write left, so a put never lists the folder. Everything is sealed with the room key like every room message. **Show friends' custom emotes** (Settings → Room, `friendEmotes`, default on) stops both directions at once: no wants sent or answered, no chunks taken, pending work dropped, and friends' images show as the placeholder, cached ones included. Animations never travel.
+ - **Known limitation (room protocol v1):** every member shares one room key, so a member can forge another member's peer id — a forged `bye` silently removes them from everyone's member list for the session, and a forged high `seq` blocks their later messages. Fixing this needs per-member authentication (a protocol bump); until then a hostile room member can always do this, to pings and emotes as much as to stills.
+ - **Baker:** `tools/extract-assets/emote_bake.py` (run with `--emotes`) reads League's emote effect files and bakes each emote at 30 fps on a 320 × 320 canvas holding 256 px of art, as a 3 s animated WebP (quality 80, played once), with an icon PNG and an Opus `.ogg` sound at 96 kbps. It also writes `src/shared/emoteCatalog.ts`, the single list of bundled emotes, and the build leaves out any emote file that list doesn't name.
++
++## 14. Room chat
++
++Room chat uses the same encrypted LAN and public-relay transports as pings and emotes. It adds a `chat` room message type; older apps validate and ignore that unknown type, so the room protocol version does not change. Chat has its own rate bucket and does not consume the incoming ping/emote limit.
++
++- **Availability and focus:** while the room is active and lolPing is enabled, **Ctrl + Alt + Enter** opens a focused composer. **Open chat** in Settings → Room and the tray's Room menu provides the same action when that shortcut is unavailable or conflicts with another global binding. The HUD follows League's in-game chat at the lower-left of the primary work area: coloured text lines on a transparent background, with one thin rectangular input underneath while composing. The native window resizes to its content between 34 and 320 px high and remains bottom-anchored, so transparent blank space does not intercept clicks. Enter sends and closes the input; Esc or blur closes it. Opening it suspends the input helper and restores the helper when it closes, including when the window or renderer disappears. Chat never changes the click-through overlay windows.
++- **Display and history:** self and remote chat messages, plus local and remote room pings, are rendered passively for about 10 seconds and never focus the composer or swallow clicks. Ping entries reuse the existing ping icons and localized names; settings previews are excluded and recording a ping does not send another network packet. Each line uses the local 24-hour `[HH:mm]` timestamp. History is capped at 100 entries and lives only for the current room session; leave or switch clears it. No chat data is written to settings or disk.
++- **Validation and limits:** a message is capped at 256 Unicode code points and 800 bytes after JSON UTF-8 encoding. Validation happens before sealing and on receipt; an invalid or over-limit message is dropped. Older peers continue to process pings, emotes and presence normally while ignoring chat.
++- **Mute and pause:** chat follows the existing room mute, per-member mute and paused semantics. The sender has a separate chat rate bucket, and a rejected send does not create a local history entry.
++- **Privacy:** chat text is sealed with the room's existing AES-256-GCM key before it reaches LAN peers or relays. LAN peers can observe local IP addresses; public relays can observe the sender's IP, anonymous room topic and timing, but not chat text or the sender's name. No new host or service is introduced.
+diff --git a/electron.vite.config.ts b/electron.vite.config.ts
+index 897dc8c08e8dc2f88227e2d59b0392e63e032d29..97301bd60c3b5de1dada6d1ea7aa3b437f0fe41a 100644
+--- a/electron.vite.config.ts
++++ b/electron.vite.config.ts
+@@ -15,7 +15,10 @@ export default defineConfig({
+   preload: {
+     build: {
+       rollupOptions: {
+-        input: { overlay: resolve('src/preload/overlay.ts'), settings: resolve('src/preload/settings.ts') },
++        input: {
++          overlay: resolve('src/preload/overlay.ts'), settings: resolve('src/preload/settings.ts'),
++          chat: resolve('src/preload/chat.ts'),
++        },
+         output: { format: 'cjs', entryFileNames: '[name].js' },
+       },
+     },
+@@ -29,6 +32,7 @@ export default defineConfig({
+         input: {
+           overlay: resolve('src/renderer/overlay/index.html'),
+           settings: resolve('src/renderer/settings/index.html'),
++          chat: resolve('src/renderer/chat/index.html'),
+         },
+       },
+     },
+diff --git a/src/main/chatWindow.ts b/src/main/chatWindow.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..4dfd26776cc93a69638478dcfdb9c7ba9b545f84
+--- /dev/null
++++ b/src/main/chatWindow.ts
+@@ -0,0 +1,226 @@
++import { BrowserWindow, globalShortcut, ipcMain, screen, type IpcMainInvokeEvent } from 'electron';
++import type { ChatSendResult } from '../shared/chat';
++import { CHAT_CH } from '../shared/chatChannels';
++import { strings } from '../shared/i18n';
++import type { ChatState } from '../shared/ipc';
++import { IS_MAC, loadPage, pageUrl, preloadPath } from './paths';
++
++export const CHAT_SHORTCUT = 'Control+Alt+Enter';
++const VISIBLE_MS = 10_000;
++
++export interface ChatWindowDeps {
++  state(): Omit<ChatState, 'composing' | 'shortcutAvailable'>;
++  send(text: string): ChatSendResult;
++  onComposing(on: boolean): void;
++  shortcutAllowed(): boolean;
++}
++
++/** A click-through message pane that takes focus only when the user opens its input. */
++export class ChatWindow {
++  private win: BrowserWindow | null = null;
++  private composing = false;
++  private shortcut = false;
++  private recent = false;
++  private timer: NodeJS.Timeout | null = null;
++  private destroyed = false;
++  private height = 320;
++  private readonly reposition = (): void => this.position();
++
++  constructor(private readonly deps: ChatWindowDeps) {
++    ipcMain.handle(CHAT_CH.get, (event) => this.owns(event) ? this.state() : null);
++    ipcMain.handle(CHAT_CH.send, (event, raw: unknown): ChatSendResult => {
++      if (!this.owns(event) || !this.composing) return { ok: false, error: 'notInRoom' };
++      return typeof raw === 'string' ? this.deps.send(raw) : { ok: false, error: 'empty' };
++    });
++    ipcMain.handle(CHAT_CH.close, (event) => { if (this.owns(event)) this.closeInput(); });
++    ipcMain.handle(CHAT_CH.resize, (event, raw: unknown) => {
++      if (!this.owns(event) || typeof raw !== 'number' || !Number.isFinite(raw)) return;
++      const height = Math.max(34, Math.min(320, Math.ceil(raw)));
++      if (height === this.height) return;
++      this.height = height;
++      this.position();
++    });
++    screen.on('display-added', this.reposition);
++    screen.on('display-removed', this.reposition);
++    screen.on('display-metrics-changed', this.reposition);
++  }
++
++  state(): ChatState {
++    return { ...this.deps.state(), composing: this.composing, shortcutAvailable: this.shortcut };
++  }
++
++  /** Room, pause and language changes never create a window or steal focus. */
++  refresh(): void {
++    if (this.destroyed) return;
++    const state = this.deps.state();
++    const active = state.roomCode !== null && state.enabled;
++    const wantsShortcut = active && this.deps.shortcutAllowed();
++    if (!wantsShortcut && this.shortcut) {
++      globalShortcut.unregister(CHAT_SHORTCUT);
++      this.shortcut = false;
++    } else if (wantsShortcut && !this.shortcut) {
++      try {
++        this.shortcut = globalShortcut.register(CHAT_SHORTCUT, () => {
++          if (this.composing) this.closeInput();
++          else this.open();
++        });
++      } catch {
++        this.shortcut = false;
++      }
++    }
++    if (!active) {
++      this.clearRecent();
++      this.closeInput();
++      this.win?.hide();
++    }
++    this.push();
++  }
++
++  open(): void {
++    if (this.destroyed) return;
++    const state = this.deps.state();
++    if (!state.roomCode || !state.enabled) return;
++    const win = this.ensureWindow();
++    this.setComposing(true);
++    win.setFocusable(true);
++    win.setIgnoreMouseEvents(false);
++    this.push();
++    if (!win.webContents.isLoading()) {
++      win.show();
++      win.focus();
++    }
++  }
++
++  closeInput(): void {
++    if (!this.composing) return;
++    this.setComposing(false);
++    // Hiding releases keyboard focus before showing the passive pane again.
++    this.win?.hide();
++    this.win?.setIgnoreMouseEvents(true);
++    this.win?.setFocusable(false);
++    this.push();
++    if (this.recent && this.deps.state().enabled) this.win?.showInactive();
++  }
++
++  /** A message appears briefly without activating its window. */
++  notify(): void {
++    if (this.destroyed) return;
++    const state = this.deps.state();
++    if (!state.roomCode || !state.enabled) return;
++    const win = this.ensureWindow();
++    this.clearRecent();
++    this.recent = true;
++    this.timer = setTimeout(() => {
++      this.timer = null;
++      this.recent = false;
++      if (!this.composing) this.win?.hide();
++    }, VISIBLE_MS);
++    this.push();
++    if (!this.composing && !win.webContents.isLoading()) win.showInactive();
++  }
++
++  reset(): void {
++    this.clearRecent();
++    this.closeInput();
++    this.win?.hide();
++    this.refresh();
++  }
++
++  destroy(): void {
++    if (this.destroyed) return;
++    this.destroyed = true;
++    this.clearRecent();
++    this.setComposing(false);
++    if (this.shortcut) globalShortcut.unregister(CHAT_SHORTCUT);
++    this.shortcut = false;
++    for (const channel of [CHAT_CH.get, CHAT_CH.send, CHAT_CH.close, CHAT_CH.resize]) ipcMain.removeHandler(channel);
++    screen.removeListener('display-added', this.reposition);
++    screen.removeListener('display-removed', this.reposition);
++    screen.removeListener('display-metrics-changed', this.reposition);
++    this.win?.destroy();
++    this.win = null;
++  }
++
++  private owns(event: IpcMainInvokeEvent): boolean {
++    return this.win !== null && !this.win.isDestroyed() && event.sender === this.win.webContents;
++  }
++
++  private setComposing(on: boolean): void {
++    if (on === this.composing) return;
++    this.composing = on;
++    this.deps.onComposing(on);
++  }
++
++  private clearRecent(): void {
++    if (this.timer) clearTimeout(this.timer);
++    this.timer = null;
++    this.recent = false;
++  }
++
++  private push(): void {
++    if (!this.win || this.win.webContents.isDestroyed()) return;
++    const state = this.state();
++    this.win.setTitle(`lolPing · ${strings(state.lang, state.platform).chatTitle}`);
++    this.win.webContents.send(CHAT_CH.changed, state);
++  }
++
++  private position(): void {
++    if (!this.win || this.win.isDestroyed()) return;
++    const area = screen.getPrimaryDisplay().workArea;
++    const inset = Math.min(12, Math.max(0, Math.floor((Math.min(area.width, area.height) - 1) / 2)));
++    const width = Math.max(1, Math.min(440, area.width - inset * 2));
++    const height = Math.max(1, Math.min(this.height, area.height - inset * 2));
++    this.win.setBounds({ x: area.x + inset, y: area.y + area.height - height - inset, width, height });
++  }
++
++  private ensureWindow(): BrowserWindow {
++    if (this.win && !this.win.isDestroyed()) return this.win;
++    const win = new BrowserWindow({
++      width: 440, height: 320, title: 'lolPing', frame: false, transparent: true, backgroundColor: '#00000000',
++      show: false, focusable: false, skipTaskbar: true, resizable: false, hasShadow: false,
++      webPreferences: { preload: preloadPath('chat'), spellcheck: false },
++    });
++    this.win = win;
++    this.position();
++    win.setAlwaysOnTop(true, 'screen-saver');
++    if (IS_MAC) win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
++    win.setIgnoreMouseEvents(true);
++    win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
++    win.webContents.on('will-navigate', (event) => {
++      try {
++        const next = new URL(event.url);
++        const own = new URL(pageUrl('chat'));
++        if (next.protocol === own.protocol && next.host === own.host && next.pathname === own.pathname) return;
++      } catch {
++        // Invalid URLs are blocked along with every page except our own.
++      }
++      event.preventDefault();
++    });
++    win.on('blur', () => this.closeInput());
++    win.on('closed', () => {
++      if (this.win !== win) return;
++      this.win = null;
++      this.clearRecent();
++      this.setComposing(false);
++    });
++    win.webContents.on('render-process-gone', () => {
++      this.closeInput();
++      win.destroy();
++    });
++    win.once('ready-to-show', () => {
++      if (this.destroyed || win.isDestroyed()) return;
++      this.push();
++      if (this.composing) {
++        win.setFocusable(true);
++        win.setIgnoreMouseEvents(false);
++        win.show();
++        win.focus();
++      } else if (this.recent) win.showInactive();
++    });
++    void loadPage(win, 'chat').catch((error: unknown) => {
++      console.warn('[chat]', error);
++      if (!win.isDestroyed()) win.destroy();
++    });
++    return win;
++  }
++}
+diff --git a/src/main/index.ts b/src/main/index.ts
+index afd654548b3b9cdbd3f38bd25a36af43a0410db6..0c4b23b63634eb97d0153c6e6e7a75d3db04b48c 100644
+--- a/src/main/index.ts
++++ b/src/main/index.ts
+@@ -6,13 +6,14 @@ import { join } from 'node:path';
+ import { resolveLang, strings, type Strings } from '../shared/i18n';
+ import { SETTINGS_CH, type About, type AppStatus } from '../shared/ipc';
+ import { announcedEmoteHashes } from '../shared/emotes';
+-import { hotkeyLabel } from '../shared/keys';
++import { hotkeyLabel, MOD } from '../shared/keys';
+ import { configCommand, type HelperStatus } from '../shared/protocol';
+ import type { RoomState } from '../shared/room';
+ import { formatRoomCode, parseRoomCode } from '../shared/roomCode';
+ import { overlaySettings, type Settings } from '../shared/settings';
+ import { updateErrorText, type UpdateState } from '../shared/update';
+ import { registerAppScheme, serveAppScheme } from './appProtocol';
++import { ChatWindow } from './chatWindow';
+ import { resolveTarget, toShared } from './displayNumbers';
+ import { EmoteCache } from './emoteCache';
+ import { EmoteLibrary, resolveEmoteArt } from './emoteLibrary';
+@@ -94,6 +95,7 @@ function start(): void {
+   let enabled = settings.enabledOnStart;
+   let quitting = false; // read by pushStatus: once true, the tray and overlays are gone
+   let capturing = false; // the settings page is listening for a key, so the helper must stay suspended
++  let chatEditing = false;
+ 
+   const overlays = new OverlayManager(
+     overlaySettings(settings),
+@@ -158,6 +160,23 @@ function start(): void {
+     },
+     announceEmotes: () => announcedEmoteHashes(settings.emoteWheel, settings.clickEmoteId),
+   });
++  const syncInputSuspend = (): void => bridge.send({ type: 'suspend', on: capturing || chatEditing });
++  const chat = new ChatWindow({
++    state: () => ({
++      messages: room.chatHistory(), roomCode: room.state().code,
++      lang: resolveLang(settings.language, app.getLocale()), platform: PLATFORM, enabled,
++    }),
++    send: (message) => room.sendChat(message),
++    onComposing: (on) => {
++      chatEditing = on;
++      if (on) overlays.cancelWheel();
++      syncInputSuspend();
++    },
++    shortcutAllowed: () => !capturing
++      && (settings.toggleHotkey.vk !== 0x0d || settings.toggleHotkey.mods !== (MOD.ctrl | MOD.alt)),
++  });
++  room.on('chat', () => chat.notify());
++  room.on('chatReset', () => chat.reset());
+   // Custom emote stills travel both ways: this side asks for friends' hashes and answers wants for our own.
+   const transfer = new EmoteTransfer({
+     now: Date.now,
+@@ -253,6 +272,7 @@ function start(): void {
+         setMuted: (on) => store.update({ roomMuted: on }),
+         leave: () => room.leave(),
+         openSettings: () => openSettingsWindow('room'),
++        openChat: () => chat.open(),
+       },
+       // The tray has no card to show a result on, so the handlers toast it. Nothing to toast on once the overlays are gone.
+       update: updater
+@@ -283,6 +303,7 @@ function start(): void {
+     const s = roomState();
+     tray.setRoom({ code: s.code, count: s.members.length, muted: settings.roomMuted });
+     settingsWindow()?.webContents.send(SETTINGS_CH.roomChanged, s);
++    chat.refresh();
+   }
+   const syncRoomFlags = (): void => room.setStatusFlags({ paused: !enabled, roomMuted: settings.roomMuted });
+   room.on('state', pushRoom);
+@@ -316,6 +337,7 @@ function start(): void {
+     if (quitting) return;
+     tray.set(trayMode(), enabled);
+     settingsWindow()?.webContents.send(SETTINGS_CH.statusChanged, status());
++    chat.refresh();
+   }
+   const about = (): About => ({
+     version: app.getVersion(),
+@@ -341,7 +363,7 @@ function start(): void {
+     if (ev.type === 'toggled') setEnabled(ev.enabled);
+     else if (ev.type === 'ready') {
+       // A restarted helper starts unsuspended: re-apply an active key capture.
+-      if (capturing) bridge.send({ type: 'suspend', on: true });
++      if (capturing || chatEditing) syncInputSuspend();
+     } else if (ev.type === 'error') console.warn('[helper]', ev.code ?? '', ev.message);
+     else overlays.handle(ev);
+   });
+@@ -365,6 +387,7 @@ function start(): void {
+     bridge.send(configCommand(s, enabled));
+     overlays.updateSettings(overlaySettings(s));
+     settingsWindow()?.webContents.send(SETTINGS_CH.changed, s);
++    chat.refresh();
+     if (s.language !== previous.language) tray.setText(text());
+     if (s.displayName !== previous.displayName || s.tagColor !== previous.tagColor) room.profileChanged();
+     if (s.autoUpdateCheck !== previous.autoUpdateCheck) updater?.setAutoCheck(s.autoUpdateCheck);
+@@ -391,9 +414,11 @@ function start(): void {
+     previewEmote: (ref) => overlays.previewEmote(ref),
+     about,
+     retryHelper: startHelper,
++    openChat: () => chat.open(),
+     setCapturing: (on) => {
+       capturing = on;
+-      bridge.send({ type: 'suspend', on });
++      syncInputSuspend();
++      chat.refresh();
+     },
+     openAccessibility: () => {
+       systemPreferences.isTrustedAccessibilityClient(true); // adds lolPing to the list and shows the system prompt
+@@ -420,7 +445,8 @@ function start(): void {
+   onSettingsWindowGone(() => {
+     if (!capturing) return;
+     capturing = false;
+-    bridge.send({ type: 'suspend', on: false });
++    syncInputSuspend();
++    chat.refresh();
+   });
+ 
+   bridge.send(configCommand(settings, enabled));
+@@ -449,6 +475,7 @@ function start(): void {
+     quitting = true;
+     event.preventDefault();
+     updater?.stop(); // aborts a download and drops a check in flight; an install that is quitting the app is left alone
++    chat.destroy();
+     room.quit(); // says bye, so the others see "left" instead of waiting for a timeout
+     transfer.stop();
+     stopWaitingForAccess();
+diff --git a/src/main/paths.ts b/src/main/paths.ts
+index 72dab6e9fb3b8738f29edd82c93dbe80088be303..b2e5d72da65473f86b9c6cc01404f36b39075a7b 100644
+--- a/src/main/paths.ts
++++ b/src/main/paths.ts
+@@ -3,7 +3,7 @@ import { join } from 'node:path';
+ import { platformOf, type Platform } from '../shared/platform';
+ import { APP_SCHEME } from './appProtocol';
+ 
+-export type Page = 'overlay' | 'settings';
++export type Page = 'overlay' | 'settings' | 'chat';
+ 
+ export const PLATFORM: Platform = platformOf(process.platform);
+ export const IS_MAC = PLATFORM === 'mac';
+diff --git a/src/main/roomManager.ts b/src/main/roomManager.ts
+index c86ab355c414462e23a592d250e05279f505a83d..7db4a9afc4d772509d4593eb7c3b5061e965e211 100644
+--- a/src/main/roomManager.ts
++++ b/src/main/roomManager.ts
+@@ -1,10 +1,11 @@
+ import { EventEmitter } from 'node:events';
++import { CHAT_HISTORY_LIMIT, validateChatText, type ChatEntry, type ChatSendResult } from '../shared/chat';
+ import type { EmoteRef } from '../shared/emotes';
+ import type { PingId } from '../shared/pings';
+ import type { JoinResult, MemberPath, RoomMember, RoomStateCore } from '../shared/room';
+ import { formatRoomCode, makeRoomCode, parseRoomCode } from '../shared/roomCode';
+ import {
+-  decodeMessage, encodeMessage, isOlderThan, PROTOCOL_VERSION, type MemberStatus, type PresenceMsg, type RoomMessage,
++  decodeMessage, encodeMessage, isOlderThan, PROTOCOL_VERSION, sanitizeName, type MemberStatus, type PresenceMsg, type RoomMessage,
+ } from '../shared/roomProtocol';
+ import { RateLimiter } from './rateLimiter';
+ import { ReplayGuard } from './replayGuard';
+@@ -27,6 +28,9 @@ export const RELAY_PING_RATE = 5;
+ export const RELAY_PING_BURST = 10;
+ /** want/chunk messages accepted per member: a still's chunks arrive as a burst, so this bucket is wider than the ping one. */
+ const TRANSFER_RATE = 60;
++/** Chat is paced independently of wheel gestures, for both LAN and relay members. */
++const CHAT_RATE = 1;
++const CHAT_BURST = 3;
+ /** Presence asked for on a shared transport (a change, a new link, a new member): at most this often. */
+ const SHARED_PRESENCE_MS = 1000;
+ /** The first app version that shows emotes. */
+@@ -99,7 +103,8 @@ const toHex = (b: Uint8Array): string => [...b].map((v) => v.toString(16).padSta
+  * The room: who is in it, what we send, and what we let through. Talks to the network only through transports,
+  * which carry sealed packets. Events: 'state' (RoomStateCore), 'remotePing' (RemotePing), 'remoteEmote' (RemoteEmote), 'toast' (RoomToast),
+  * 'saveCode' (canonical code | null: what "rejoin last room" should remember), 'emotes' (peer, announced hashes),
+- * 'want' (WantMsg), 'chunk' (ChunkMsg) and 'memberGone' (peer), which EmoteTransfer answers.
++ * 'want' (WantMsg), 'chunk' (ChunkMsg) and 'memberGone' (peer), which EmoteTransfer answers,
++ * plus 'chat' (ChatEntry) and 'chatReset' (the room's session history was cleared).
+  */
+ export class RoomManager extends EventEmitter {
+   /** Our peer ID: random per join, since a peer that said bye stays "gone" to the others for their whole session. */
+@@ -118,6 +123,9 @@ export class RoomManager extends EventEmitter {
+   private readonly limiter: RateLimiter;
+   /** Emote stills (want/chunk) per member: their own, wider bucket, so a flood of wants still meets a wall. */
+   private readonly transferLimiter: RateLimiter;
++  private readonly chatLimiter: RateLimiter;
++  private readonly chatSendLimiter: RateLimiter;
++  private chatEntries: ChatEntry[] = [];
+   private paused = false;
+   private roomMuted = false;
+   private aloneSince: number | null = null;
+@@ -144,6 +152,8 @@ export class RoomManager extends EventEmitter {
+     this.guard = new ReplayGuard(deps.now);
+     this.limiter = new RateLimiter(deps.now);
+     this.transferLimiter = new RateLimiter(deps.now);
++    this.chatLimiter = new RateLimiter(deps.now);
++    this.chatSendLimiter = new RateLimiter(deps.now);
+     this.relayCap = new RateLimiter(deps.now);
+     for (const t of deps.transports) {
+       t.on('packet', (peer: PeerKey, packet: Uint8Array) => this.onPacket(t, peer, packet));
+@@ -181,17 +191,52 @@ export class RoomManager extends EventEmitter {
+   }
+ 
+   sendPing(ping: PingId, shared: { d: number; x: number; y: number }): void {
+-    this.sendShared({ t: 'ping', ping, ...shared });
++    const ts = this.deps.now();
++    const profile = this.deps.profile();
++    const seq = this.sendShared({ t: 'ping', ping, ...shared, ts });
++    if (seq === undefined) return;
++    this.appendChat({
++      kind: 'ping', id: `${this.self}:${seq}`, peer: this.self, name: sanitizeName(profile.name), color: profile.color,
++      ping, ts, self: true,
++    });
+   }
+ 
+   sendEmote(e: EmoteRef, shared: { d: number; x: number; y: number }): void {
+     this.sendShared({ t: 'emote', e, ...shared });
+   }
+ 
+-  /** A ping or an emote: each member gets it over its own route; shared transports get one send, within the relay cap. */
+-  private sendShared(body: Record<string, unknown>): void {
++  /** Current-session messages only; callers cannot mutate the history or its entries. */
++  chatHistory(): ChatEntry[] {
++    return this.chatEntries.map((entry) => ({ ...entry }));
++  }
++
++  sendChat(raw: string): ChatSendResult {
++    if (this.phase === 'idle' || !this.keys) return { ok: false, error: 'notInRoom' };
++    if (this.paused) return { ok: false, error: 'paused' };
++    const text = validateChatText(raw);
++    if (!text.ok) return text;
++    if (!this.chatSendLimiter.allow('self', CHAT_RATE, CHAT_BURST)) return { ok: false, error: 'rateLimited' };
++    const ts = this.deps.now();
++    const profile = this.deps.profile();
++    let seq: number | undefined;
++    try {
++      seq = this.sendShared({ t: 'chat', text: text.text, ts }, false);
++    } catch {
++      return { ok: false, error: 'failed' };
++    }
++    if (seq === undefined) return { ok: false, error: 'failed' };
++    this.appendChat({
++      kind: 'message', id: `${this.self}:${seq}`, peer: this.self, name: sanitizeName(profile.name), color: profile.color,
++      text: text.text, ts, self: true,
++    });
++    return { ok: true };
++  }
++
++  /** Each member gets it over its own route; shared transports get one send, with a separate cap for chat. */
++  private sendShared(body: Record<string, unknown>, useRelayPingCap = true): number | undefined {
+     if (this.phase === 'idle' || !this.keys || this.paused) return;
+     const packet = this.seal(body);
++    const seq = this.seq;
+     const sharedRoutes = new Set<Transport>();
+     for (const m of this.members.values()) {
+       const route = this.route(m);
+@@ -199,7 +244,10 @@ export class RoomManager extends EventEmitter {
+       if (route.transport.shared) sharedRoutes.add(route.transport);
+       else route.transport.sendTo(route.key, packet);
+     }
+-    for (const t of sharedRoutes) if (this.relayCap.allow(t.kind, RELAY_PING_RATE, RELAY_PING_BURST)) t.broadcast(packet);
++    for (const t of sharedRoutes) {
++      if (!useRelayPingCap || this.relayCap.allow(t.kind, RELAY_PING_RATE, RELAY_PING_BURST)) t.broadcast(packet);
++    }
++    return seq;
+   }
+ 
+   /** How a member is reached right now, for emote transfers: cheap LAN unicast, one-cast-reaches-all relays, or neither. */
+@@ -393,6 +441,10 @@ export class RoomManager extends EventEmitter {
+     this.staleStrikes.clear();
+     this.lastPresence = {};
+     this.aloneSince = null;
++    this.chatEntries = [];
++    this.chatLimiter.clear();
++    this.chatSendLimiter.clear();
++    this.emit('chatReset');
+     this.emitState();
+   }
+ 
+@@ -439,6 +491,15 @@ export class RoomManager extends EventEmitter {
+       this.emit(msg.t, msg);
+       return;
+     }
++    if (msg.t === 'chat') {
++      if (this.paused || this.roomMuted || m.muted || m.needsUpdate) return;
++      if (!this.chatLimiter.allow(m.peer, CHAT_RATE, CHAT_BURST)) return;
++      this.appendChat({
++        kind: 'message', id: `${m.peer}:${msg.seq}`, peer: m.peer, name: m.name, color: m.color,
++        text: msg.text, ts: msg.ts, self: false,
++      });
++      return;
++    }
+     // Pings and emotes pass the same gates and share one budget per member.
+     if (this.paused || this.roomMuted || m.muted || m.needsUpdate) return;
+     if (!this.limiter.allow(m.peer, this.deps.profile().limit)) return;
+@@ -446,8 +507,13 @@ export class RoomManager extends EventEmitter {
+     if (!target) return;
+     const [x, y] = [msg.x * target.width, msg.y * target.height];
+     const tag = { name: m.name, color: m.color };
+-    if (msg.t === 'ping') this.emit('remotePing', { displayId: target.displayId, x, y, id: msg.ping, tag } satisfies RemotePing);
+-    else this.emit('remoteEmote', { displayId: target.displayId, x, y, ref: msg.e, peer: m.peer, tag } satisfies RemoteEmote);
++    if (msg.t === 'ping') {
++      this.emit('remotePing', { displayId: target.displayId, x, y, id: msg.ping, tag } satisfies RemotePing);
++      this.appendChat({
++        kind: 'ping', id: `${m.peer}:${msg.seq}`, peer: m.peer, name: m.name, color: m.color,
++        ping: msg.ping, ts: msg.ts, self: false,
++      });
++    } else this.emit('remoteEmote', { displayId: target.displayId, x, y, ref: msg.e, peer: m.peer, tag } satisfies RemoteEmote);
+   }
+ 
+   private onPresence(t: Transport, key: PeerKey, msg: PresenceMsg): void {
+@@ -512,6 +578,7 @@ export class RoomManager extends EventEmitter {
+     this.members.delete(m.peer);
+     this.limiter.forget(m.peer);
+     this.transferLimiter.forget(m.peer);
++    this.chatLimiter.forget(m.peer);
+     for (const p of Object.values(m.paths)) this.answered.delete(p.key);
+     if (this.members.size === 0 && this.phase !== 'idle') this.aloneSince = this.deps.now();
+     this.emit('memberGone', m.peer);
+@@ -610,4 +677,10 @@ export class RoomManager extends EventEmitter {
+     this.lastState = json;
+     this.emit('state', s);
+   }
++
++  private appendChat(entry: ChatEntry): void {
++    this.chatEntries.push({ ...entry });
++    if (this.chatEntries.length > CHAT_HISTORY_LIMIT) this.chatEntries.shift();
++    this.emit('chat', { ...entry });
++  }
+ }
+diff --git a/src/main/settingsIpc.ts b/src/main/settingsIpc.ts
+index 669ba78379179c1931d8e239a3862cd6edc9b452..56746a85e4600eb09af934c44636c9f029b56a67 100644
+--- a/src/main/settingsIpc.ts
++++ b/src/main/settingsIpc.ts
+@@ -26,6 +26,7 @@ export interface SettingsIpcDeps {
+   about(): About;
+   retryHelper(): void;
+   setCapturing(on: boolean): void;
++  openChat(): void;
+   openAccessibility(): void;
+   /** Strings in the app's current language. */
+   text(): Strings;
+@@ -131,6 +132,7 @@ export function registerSettingsIpc(d: SettingsIpcDeps): void {
+   ipcMain.handle(SETTINGS_CH.roomClipboard, () => d.room.clipboardCode());
+   ipcMain.handle(SETTINGS_CH.roomCopy, () => d.room.copyCode());
+   ipcMain.handle(SETTINGS_CH.roomRetryInternet, () => d.room.retryInternet());
++  ipcMain.handle(SETTINGS_CH.roomOpenChat, () => d.openChat());
+ 
+   ipcMain.handle(SETTINGS_CH.updateGet, (): UpdateState | null => d.update?.state() ?? null);
+   ipcMain.handle(SETTINGS_CH.updateCheck, async () => {
+diff --git a/src/main/tray.ts b/src/main/tray.ts
+index 512acbe64aaa10e10851e65b37e4721e1e3b9d81..1759a9e286489cb8ad48b86ba60f552e5ecfd381 100644
+--- a/src/main/tray.ts
++++ b/src/main/tray.ts
+@@ -29,6 +29,7 @@ export interface TrayHandlers {
+     leave(): void;
+     /** Opens settings at the Room section. */
+     openSettings(): void;
++    openChat(): void;
+   };
+ }
+ 
+@@ -197,6 +198,7 @@ export class AppTray {
+       { label: t.trayRoomLabel(this.room.code, this.room.count), enabled: false },
+       { type: 'separator' },
+       { label: t.trayRoomCopy, click: () => r.copyCode() },
++      { label: t.chatOpen, enabled: this.enabled, click: () => r.openChat() },
+       { label: t.trayRoomMute, type: 'checkbox', checked: this.room.muted, click: (item) => r.setMuted(item.checked) },
+       { label: t.trayRoomLeave, click: () => r.leave() },
+       { type: 'separator' },
+diff --git a/src/preload/chat.ts b/src/preload/chat.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..56703824f1fb929d4e23cfa44cdc5cae6dfd8474
+--- /dev/null
++++ b/src/preload/chat.ts
+@@ -0,0 +1,17 @@
++import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
++import { CHAT_CH } from '../shared/chatChannels';
++import type { ChatApi, ChatState } from '../shared/ipc';
++
++const api: ChatApi = {
++  getState: () => ipcRenderer.invoke(CHAT_CH.get),
++  onState: (cb) => {
++    const handler = (_event: IpcRendererEvent, state: ChatState): void => cb(state);
++    ipcRenderer.on(CHAT_CH.changed, handler);
++    return () => ipcRenderer.removeListener(CHAT_CH.changed, handler);
++  },
++  send: (text) => ipcRenderer.invoke(CHAT_CH.send, text),
++  close: () => ipcRenderer.invoke(CHAT_CH.close),
++  resize: (height) => ipcRenderer.invoke(CHAT_CH.resize, height),
++};
++
++contextBridge.exposeInMainWorld('chatApi', api);
+diff --git a/src/preload/settings.ts b/src/preload/settings.ts
+index 676943343e99c937d44c06b2aafaa756e81cc57a..a45eefd8f5b89a9d6f001edf0cf962796e187af3 100644
+--- a/src/preload/settings.ts
++++ b/src/preload/settings.ts
+@@ -36,6 +36,7 @@ const api: SettingsApi = {
+   clipboardRoomCode: () => ipcRenderer.invoke(SETTINGS_CH.roomClipboard),
+   copyRoomCode: () => ipcRenderer.invoke(SETTINGS_CH.roomCopy),
+   retryInternet: () => ipcRenderer.invoke(SETTINGS_CH.roomRetryInternet),
++  openChat: () => ipcRenderer.invoke(SETTINGS_CH.roomOpenChat),
+   onShowSection: (cb) => subscribe(SETTINGS_CH.showSection, cb),
+   getUpdate: () => ipcRenderer.invoke(SETTINGS_CH.updateGet),
+   onUpdate: (cb) => subscribe(SETTINGS_CH.updateState, cb),
+diff --git a/src/renderer/chat/chat.css b/src/renderer/chat/chat.css
+new file mode 100644
+index 0000000000000000000000000000000000000000..126563c1c95328dd241508a9c98b135dedccad2b
+--- /dev/null
++++ b/src/renderer/chat/chat.css
+@@ -0,0 +1,85 @@
++:root {
++  color-scheme: dark;
++  font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
++  font-size: 14px;
++  color: #e8e6d8;
++}
++
++* { box-sizing: border-box; }
++html, body { width: 100%; height: 100%; margin: 0; background: transparent; overflow: hidden; }
++[hidden] { display: none !important; }
++
++#chat-root { height: 100%; padding: 3px 6px; display: flex; align-items: flex-end; }
++.chatHud {
++  width: 100%;
++  min-height: 0;
++  /* A content cap independent of the window lets new messages grow a compact window again. */
++  max-height: 314px;
++  flex-shrink: 0;
++  display: flex;
++  flex-direction: column;
++}
++.chatHistory {
++  min-height: 0;
++  flex: 0 1 auto;
++  overflow-y: hidden;
++  padding: 3px 5px 5px;
++  background: linear-gradient(90deg, rgb(0 0 0 / 22%), rgb(0 0 0 / 7%) 75%, transparent);
++  scrollbar-width: none;
++}
++.chatHistory:empty { padding: 0; background: none; }
++.chatHistory::-webkit-scrollbar { display: none; }
++.composing .chatHistory { overflow-y: auto; }
++.chatMessage {
++  margin: 0 0 1px;
++  line-height: 1.5;
++  overflow-wrap: anywhere;
++  white-space: pre-wrap;
++  text-shadow: -1px -1px 1px #000, 1px -1px 1px #000, -1px 1px 1px #000, 1px 1px 1px #000, 0 1px 3px #000;
++}
++.chatMessage:last-child { margin-bottom: 0; }
++.chatTime { color: #9da7a1; font-size: 12px; font-variant-numeric: tabular-nums; }
++.chatChannel { color: #9bcbd2; }
++.chatName { font-weight: 600; }
++.chatText { color: #e8e6d8; }
++.signal .chatText { color: #e4b757; }
++.chatPingIcon {
++  width: 15px;
++  height: 15px;
++  object-fit: contain;
++  vertical-align: -3px;
++  margin-right: 4px;
++  filter: drop-shadow(0 1px 1px #000);
++}
++.chatComposer { flex: 0 0 auto; margin-top: 2px; }
++.chatInputRow {
++  display: flex;
++  align-items: center;
++  height: 28px;
++  border: 1px solid rgb(131 126 101 / 76%);
++  background: rgb(0 0 0 / 63%);
++  padding: 0 6px;
++}
++.chatInputRow:focus-within { border-color: rgb(173 157 112 / 86%); }
++.chatInputChannel { flex: 0 0 auto; color: #9bcbd2; margin-right: 6px; line-height: 1; }
++.chatInput {
++  min-width: 0;
++  flex: 1;
++  height: 100%;
++  border: 0;
++  border-radius: 0;
++  padding: 0;
++  font: inherit;
++  color: #eeeade;
++  background: transparent;
++  caret-color: #e6deca;
++  outline: none;
++}
++.chatInput:disabled { opacity: .55; }
++.chatError {
++  margin: 0 5px 4px;
++  color: #edaa80;
++  font-size: 12px;
++  line-height: 1.5;
++  text-shadow: 0 1px 2px #000, 1px 0 2px #000, -1px 0 2px #000;
++}
+diff --git a/src/renderer/chat/chatHistory.ts b/src/renderer/chat/chatHistory.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..cdd20836b2d8db645e1845d8da33ace5c5553fe8
+--- /dev/null
++++ b/src/renderer/chat/chatHistory.ts
+@@ -0,0 +1,7 @@
++import type { Lang } from '../../shared/i18n';
++
++/** In-game timestamps use local 24-hour time, including 00 rather than 24 at midnight. */
++export function chatTimestamp(ts: number, lang: Lang): string {
++  const time = new Intl.DateTimeFormat(lang, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(ts);
++  return `[${time}]`;
++}
+diff --git a/src/renderer/chat/chatLogic.ts b/src/renderer/chat/chatLogic.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..2b91024852b140b3aa10930826913de8415e0989
+--- /dev/null
++++ b/src/renderer/chat/chatLogic.ts
+@@ -0,0 +1,18 @@
++export interface ChatKey {
++  key: string;
++  keyCode: number;
++  isComposing: boolean;
++  repeat: boolean;
++  ctrlKey: boolean;
++  altKey: boolean;
++  metaKey: boolean;
++  shiftKey: boolean;
++}
++
++/** IME confirmation stays with the input method; it must never send a half-written message. */
++export function chatKeyAction(event: ChatKey): 'send' | 'close' | 'ignore' {
++  if (event.isComposing || event.keyCode === 229 || event.repeat) return 'ignore';
++  if (event.key === 'Escape') return 'close';
++  if (event.key !== 'Enter' || event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return 'ignore';
++  return 'send';
++}
+diff --git a/src/renderer/chat/index.html b/src/renderer/chat/index.html
+new file mode 100644
+index 0000000000000000000000000000000000000000..43a9db3c2631c2fcaf3c4e3098020fc600b22cba
+--- /dev/null
++++ b/src/renderer/chat/index.html
+@@ -0,0 +1,16 @@
++<!doctype html>
++<html lang="en">
++  <head>
++    <meta charset="utf-8" />
++    <meta
++      http-equiv="Content-Security-Policy"
++      content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'"
++    />
++    <title>lolPing</title>
++    <link rel="stylesheet" href="./chat.css" />
++  </head>
++  <body>
++    <div id="chat-root"></div>
++    <script type="module" src="./main.ts"></script>
++  </body>
++</html>
+diff --git a/src/renderer/chat/main.ts b/src/renderer/chat/main.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..7b90dda8a4bfd9eb5cc565adbce46bd7bf2f4a7f
+--- /dev/null
++++ b/src/renderer/chat/main.ts
+@@ -0,0 +1,198 @@
++import { CHAT_HISTORY_LIMIT, type ChatEntry, type ChatSendResult } from '../../shared/chat';
++import { strings } from '../../shared/i18n';
++import type { ChatApi, ChatState } from '../../shared/ipc';
++import { pingById, textureUrl } from '../../shared/pings';
++import { TAG_COLORS } from '../../shared/roomColors';
++import { chatTimestamp } from './chatHistory';
++import { chatKeyAction } from './chatLogic';
++
++declare global {
++  interface Window {
++    chatApi: ChatApi;
++  }
++}
++
++const api = window.chatApi;
++const root = document.getElementById('chat-root');
++if (!root) throw new Error('chat root is missing');
++
++function element<K extends keyof HTMLElementTagNameMap>(tag: K, className: string): HTMLElementTagNameMap[K] {
++  const el = document.createElement(tag);
++  el.className = className;
++  return el;
++}
++
++const hud = element('section', 'chatHud');
++const history = element('div', 'chatHistory');
++history.setAttribute('role', 'log');
++history.setAttribute('aria-live', 'polite');
++history.setAttribute('aria-relevant', 'additions');
++const composer = element('div', 'chatComposer');
++composer.hidden = true;
++const inputRow = element('div', 'chatInputRow');
++const channel = element('span', 'chatInputChannel');
++const input = element('input', 'chatInput');
++input.type = 'text';
++input.autocomplete = 'off';
++input.spellcheck = false;
++inputRow.append(channel, input);
++const errorLabel = element('div', 'chatError');
++errorLabel.setAttribute('role', 'status');
++errorLabel.hidden = true;
++composer.append(errorLabel, inputRow);
++hud.append(history, composer);
++root.append(hud);
++
++let state: ChatState | null = null;
++let error: Extract<ChatSendResult, { ok: false }>['error'] | 'unknown' | null = null;
++let sending = false;
++let inputGeneration = 0;
++let renderedHistory = '';
++let lastHeight = 0;
++let resizeFrame: number | null = null;
++
++function scheduleResize(): void {
++  if (!state || resizeFrame !== null) return;
++  resizeFrame = requestAnimationFrame(() => {
++    resizeFrame = null;
++    const height = Math.max(34, Math.min(320, Math.ceil(hud.getBoundingClientRect().height + 6)));
++    if (height === lastHeight) return;
++    lastHeight = height;
++    void api.resize(height).catch(() => { if (lastHeight === height) lastHeight = 0; });
++  });
++}
++
++const resizeObserver = new ResizeObserver(scheduleResize);
++resizeObserver.observe(hud);
++
++function renderDraft(): void {
++  input.disabled = !state?.enabled || !state.roomCode;
++  if (!state) return;
++  const t = strings(state.lang, state.platform);
++  errorLabel.textContent = error === 'unknown' ? t.chatErrorUnknown : error ? t.chatErrors[error] : '';
++  errorLabel.hidden = error === null;
++}
++
++function messageRow(message: ChatEntry, current: ChatState): HTMLElement {
++  const t = strings(current.lang, current.platform);
++  const row = element('div', `chatMessage${message.self ? ' self' : ''}${message.kind === 'ping' ? ' signal' : ''}`);
++  const time = element('time', 'chatTime');
++  time.textContent = `${chatTimestamp(message.ts, current.lang)} `;
++  time.dateTime = new Date(message.ts).toISOString();
++  const label = element('span', 'chatChannel');
++  label.textContent = `${t.chatChannel} `;
++  const name = element('span', 'chatName');
++  name.style.color = TAG_COLORS[message.color] ?? TAG_COLORS[0];
++  name.textContent = `${message.name}: `;
++  const text = element('span', 'chatText');
++  row.append(time, label, name);
++  if (message.kind === 'ping') {
++    const ping = pingById(message.ping);
++    if (ping) {
++      const icon = element('img', 'chatPingIcon');
++      icon.src = textureUrl(ping.icon);
++      icon.alt = '';
++      icon.setAttribute('aria-hidden', 'true');
++      icon.title = t.pingNames[message.ping];
++      icon.draggable = false;
++      row.append(icon);
++    }
++    text.textContent = t.chatPing(t.pingNames[message.ping]);
++  } else {
++    text.textContent = message.text;
++  }
++  row.append(text);
++  return row;
++}
++
++function renderHistory(current: ChatState, entering: boolean): void {
++  const messages = current.composing ? current.messages.slice(-CHAT_HISTORY_LIMIT) : current.messages.slice(-5);
++  const key = JSON.stringify([current.composing, current.lang, messages.map((message) => message.id)]);
++  if (key === renderedHistory) return;
++  renderedHistory = key;
++  const oldScrollTop = history.scrollTop;
++  const atBottom = history.scrollHeight - history.clientHeight - oldScrollTop < 28;
++  history.replaceChildren(...messages.map((message) => messageRow(message, current)));
++  if (!current.composing || entering || atBottom) history.scrollTop = history.scrollHeight;
++  else history.scrollTop = oldScrollTop;
++}
++
++function applyState(next: ChatState): void {
++  const entering = next.composing && !state?.composing;
++  if (next.composing !== state?.composing || next.roomCode !== state?.roomCode) {
++    inputGeneration++;
++    sending = false;
++  }
++  if (state && next.roomCode !== state.roomCode) {
++    input.value = '';
++    error = null;
++  }
++  state = next;
++  const t = strings(next.lang, next.platform);
++  document.documentElement.lang = next.lang;
++  document.title = t.chatTitle;
++  hud.classList.toggle('composing', next.composing);
++  composer.hidden = !next.composing;
++  channel.textContent = t.chatChannel;
++  input.setAttribute('aria-label', t.chatPlaceholder);
++  history.setAttribute('aria-label', t.chatTitle);
++  renderHistory(next, entering);
++  renderDraft();
++  scheduleResize();
++  if (entering && !input.disabled) input.focus({ preventScroll: true });
++}
++
++async function send(): Promise<void> {
++  if (!state?.composing || sending || !input.value.trim() || input.disabled) return;
++  const text = input.value;
++  const generation = inputGeneration;
++  sending = true;
++  error = null;
++  renderDraft();
++  try {
++    const result = await api.send(text);
++    if (generation !== inputGeneration) return;
++    if (result.ok) {
++      if (input.value === text) {
++        input.value = '';
++        await api.close();
++      }
++    } else {
++      error = result.error;
++    }
++  } catch {
++    if (generation === inputGeneration) error = 'unknown';
++  } finally {
++    if (generation === inputGeneration) {
++      sending = false;
++      renderDraft();
++    }
++  }
++}
++
++input.addEventListener('input', () => {
++  error = null;
++  renderDraft();
++});
++window.addEventListener('keydown', (event) => {
++  if (!state?.composing) return;
++  const action = chatKeyAction(event);
++  if (action === 'ignore') return;
++  event.preventDefault();
++  if (action === 'close') void api.close();
++  else void send();
++});
++
++let receivedState = false;
++const unsubscribe = api.onState((next) => {
++  receivedState = true;
++  applyState(next);
++});
++void api.getState().then((next) => {
++  if (!receivedState) applyState(next);
++});
++window.addEventListener('unload', () => {
++  unsubscribe();
++  resizeObserver.disconnect();
++  if (resizeFrame !== null) cancelAnimationFrame(resizeFrame);
++}, { once: true });
+diff --git a/src/renderer/settings/components/RoomSection.tsx b/src/renderer/settings/components/RoomSection.tsx
+index 52d9738b22a68a933990a47366fa82c485b7db97..7865b97926c1245dbbb0805da1264599214397eb 100644
+--- a/src/renderer/settings/components/RoomSection.tsx
++++ b/src/renderer/settings/components/RoomSection.tsx
+@@ -1,6 +1,6 @@
+ import { Button, Input, Slider, Spinner } from '@fluentui/react-components';
+ import {
+-  ArrowSync24Regular, Color24Regular, Desktop24Regular, Globe24Regular, Image24Regular, Person24Regular, PeopleCommunity24Regular,
++  ArrowSync24Regular, Chat24Regular, Color24Regular, Desktop24Regular, Globe24Regular, Image24Regular, Person24Regular, PeopleCommunity24Regular,
+   SpeakerMute24Regular, TopSpeed24Regular, Warning24Regular,
+ } from '@fluentui/react-icons';
+ import { useEffect, useRef, useState } from 'react';
+@@ -127,6 +127,9 @@ function InRoom({ room, allowInternet }: { room: RoomState; allowInternet: boole
+           <Button onClick={() => void api.leaveRoom()}>{t.roomLeave}</Button>
+         </div>
+       </div>
++      <SettingRow icon={<Chat24Regular />} title={t.chatTitle} description={t.chatShortcutHint}>
++        <Button onClick={() => void api.openChat()}>{t.chatOpen}</Button>
++      </SettingRow>
+       {room.lan === 'unavailable' ? (
+         <div className="card permission">
+           <span className="icon"><Warning24Regular /></span>
+diff --git a/src/shared/chat.ts b/src/shared/chat.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..986ba871154ae2950e3eba21e2157a11c2c0a2f1
+--- /dev/null
++++ b/src/shared/chat.ts
+@@ -0,0 +1,39 @@
++import type { PingId } from './pings';
++
++export const CHAT_MAX_LENGTH = 256;
++/** The JSON string, including escapes, must leave room for the sealed room packet's other fields. */
++export const CHAT_MAX_ENCODED_BYTES = 800;
++export const CHAT_HISTORY_LIMIT = 100;
++
++export interface ChatEntryBase {
++  id: string;
++  peer: string;
++  name: string;
++  color: number;
++  ts: number;
++  self: boolean;
++}
++
++export type ChatEntry = ChatEntryBase & ({ kind: 'message'; text: string } | { kind: 'ping'; ping: PingId });
++
++export type ChatSendResult =
++  | { ok: true }
++  | { ok: false; error: 'notInRoom' | 'paused' | 'empty' | 'tooLong' | 'rateLimited' | 'failed' };
++
++export type ChatTextResult =
++  | { ok: true; text: string }
++  | { ok: false; error: 'empty' | 'tooLong' };
++
++const UNSAFE_CHARS =
++  /[\u0000-\u001f\u007f-\u009f\u00ad\u034f\u061c\u115f\u1160\u180e\u200b\u200e\u200f\u2028-\u202e\u2060-\u2069\u3164\ufeff\uffa0]/g;
++
++/** Single-line plain text; markup stays text, while hidden controls cannot reorder the sender or nearby messages. */
++export function validateChatText(raw: unknown): ChatTextResult {
++  if (typeof raw !== 'string') return { ok: false, error: 'empty' };
++  const text = raw.replace(/[\r\n\t\u2028\u2029]+/g, ' ').replace(UNSAFE_CHARS, '').trim();
++  if (!text.replace(/[\u200c\u200d\ufe00-\ufe0f]/g, '').trim()) return { ok: false, error: 'empty' };
++  if ([...text].length > CHAT_MAX_LENGTH || new TextEncoder().encode(JSON.stringify(text)).length > CHAT_MAX_ENCODED_BYTES) {
++    return { ok: false, error: 'tooLong' };
++  }
++  return { ok: true, text };
++}
+diff --git a/src/shared/chatChannels.ts b/src/shared/chatChannels.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..08fccb65f5e0d429f2928742a394043bdb5de9fa
+--- /dev/null
++++ b/src/shared/chatChannels.ts
+@@ -0,0 +1,8 @@
++/** Separate from other preload channels so sandboxed preloads stay self-contained. */
++export const CHAT_CH = {
++  get: 'chat:get',
++  changed: 'chat:changed',
++  send: 'chat:send',
++  close: 'chat:close',
++  resize: 'chat:resize',
++} as const;
+diff --git a/src/shared/i18n.ts b/src/shared/i18n.ts
+index fe65473ddcd3a40d56bcd4bee624dd1dafca4784..d37470b074b1a20d53e3258376359a5ecc864f72 100644
+--- a/src/shared/i18n.ts
++++ b/src/shared/i18n.ts
+@@ -141,6 +141,21 @@ const en = {
+   roomColor: 'Tag colour',
+   roomColorLabel: (n: number) => `Colour ${n}`,
+   roomJoinTitle: 'Join a room',
++  chatTitle: 'Room chat',
++  chatChannel: '[Room]',
++  chatPing: (name: string) => `signals: ${name}`,
++  chatPlaceholder: 'Message your room…',
++  chatShortcutHint: 'Ctrl + Alt + Enter opens chat · Enter sends · Esc closes',
++  chatOpen: 'Open chat',
++  chatErrors: {
++    notInRoom: 'Join a room before sending a message.',
++    paused: 'Resume lolPing to send a message.',
++    empty: 'Type a message first.',
++    tooLong: 'The message is too long. Use fewer than 256 characters; emoji use more space.',
++    rateLimited: 'Messages are going too fast. Wait a moment and try again.',
++    failed: 'The message could not be sent. Try again.',
++  },
++  chatErrorUnknown: 'The message could not be sent. Try again.',
+   roomJoinDesc: 'Paste the code a friend sent you, or create a room and share yours',
+   roomNetworkHint: 'The first time, Windows asks whether lolPing may use your network: allow it, and make sure your Wi‑Fi is set to Private.',
+   roomJoin: 'Join',
+@@ -387,6 +402,21 @@ const zh: Strings = {
+   roomColor: '名字颜色',
+   roomColorLabel: (n) => `颜色 ${n}`,
+   roomJoinTitle: '加入房间',
++  chatTitle: '房间聊天',
++  chatChannel: '[房间]',
++  chatPing: (name) => `发出信号：${name}`,
++  chatPlaceholder: '发送消息给房间里的朋友…',
++  chatShortcutHint: 'Ctrl + Alt + Enter 打开聊天 · Enter 发送 · Esc 收起',
++  chatOpen: '打开聊天',
++  chatErrors: {
++    notInRoom: '请先加入房间再发送消息。',
++    paused: '请恢复 lolPing 后再发送消息。',
++    empty: '请先输入消息。',
++    tooLong: '消息太长，请缩短至 256 个字符以内；表情符号会占用更多空间。',
++    rateLimited: '发送消息太快，请稍等片刻再试。',
++    failed: '消息发送失败，请重试。',
++  },
++  chatErrorUnknown: '消息发送失败，请重试。',
+   roomJoinDesc: '粘贴朋友发来的房间码，或创建房间并分享你的房间码',
+   roomNetworkHint: '第一次使用时，Windows 会询问是否允许 lolPing 使用网络：请允许，并确认你的 Wi‑Fi 设置为“专用网络”。',
+   roomJoin: '加入',
+@@ -511,6 +541,7 @@ const zh: Strings = {
+ /** Wording that differs on macOS: menu bar instead of tray, Finder, login items, ⌃ ⌥ ⌘. */
+ const MAC: Record<Lang, Partial<Strings>> = {
+   en: {
++    chatShortcutHint: '⌃⌥Return opens chat · Return sends · Esc closes',
+     hintNeedModifier: 'Add ⌃, ⌥ or ⌘',
+     launchAtStartup: 'Open at login',
+     launchAtStartupDesc: 'Starts in the menu bar',
+@@ -529,6 +560,7 @@ const MAC: Record<Lang, Partial<Strings>> = {
+     roomNetworkHint: 'The first time, macOS asks whether lolPing may find devices on your local network: allow it.',
+   },
+   'zh-CN': {
++    chatShortcutHint: '⌃⌥Return 打开聊天 · Return 发送 · Esc 收起',
+     hintNeedModifier: '请加上 ⌃、⌥ 或 ⌘',
+     launchAtStartup: '登录时打开',
+     launchAtStartupDesc: '启动后显示在菜单栏中',
+diff --git a/src/shared/ipc.ts b/src/shared/ipc.ts
+index aad0ab86f360c19a39b2dbf1abc616601136de88..244331e37ab1e7ebe03dcf78c2043239db46d0b0 100644
+--- a/src/shared/ipc.ts
++++ b/src/shared/ipc.ts
+@@ -1,4 +1,6 @@
+ import type { EmoteArt, EmoteFile, EmoteRef, ImportResult } from './emotes';
++import type { ChatEntry, ChatSendResult } from './chat';
++import type { Lang } from './i18n';
+ import type { PingId } from './pings';
+ import type { Platform } from './platform';
+ import type { HelperStatus, WheelKind } from './protocol';
+@@ -57,6 +59,27 @@ export interface AppStatus {
+   staleAccess?: boolean;
+ }
+ 
++/** Main-process room history and the desktop chat window's input state. */
++export interface ChatState {
++  messages: ChatEntry[];
++  composing: boolean;
++  roomCode: string | null;
++  lang: Lang;
++  platform: Platform;
++  enabled: boolean;
++  shortcutAvailable: boolean;
++}
++
++/** window.chatApi: only room text and closing the input window. */
++export interface ChatApi {
++  getState(): Promise<ChatState>;
++  onState(cb: (state: ChatState) => void): () => void;
++  send(text: string): Promise<ChatSendResult>;
++  close(): Promise<void>;
++  /** Fits the desktop window to the visible chat lines and input. */
++  resize(height: number): Promise<void>;
++}
++
+ export interface About {
+   version: string;
+   problems: string[];
+@@ -104,6 +127,8 @@ export interface SettingsApi {
+   copyRoomCode(): Promise<void>;
+   /** Reconnects to every relay now (the Room page's Retry). */
+   retryInternet(): Promise<void>;
++  /** Opens the desktop room chat input. */
++  openChat(): Promise<void>;
+   /** The main process asks to scroll to a section (e.g. tray → Room settings…). */
+   onShowSection(cb: (id: string) => void): () => void;
+   /** Where the update checker is, or null when this build has none (a development build): then the page shows no update controls. */
+diff --git a/src/shared/roomProtocol.ts b/src/shared/roomProtocol.ts
+index f90f6a41e1e5669e9578047999ca6c38f30462fe..8e0d84f3fc148ef13d666e1f3b648a37b552cdd8 100644
+--- a/src/shared/roomProtocol.ts
++++ b/src/shared/roomProtocol.ts
+@@ -1,6 +1,7 @@
+ import { ANNOUNCED_MAX, HASH_RE, isEmoteRefShape, type EmoteRef } from './emotes';
+ import { isPingId, type PingId } from './pings';
+ import { isTagColor } from './roomColors';
++import { validateChatText } from './chat';
+ 
+ /** Bumped when room messages change incompatibly. Peers on another version are shown as "needs update". */
+ export const PROTOCOL_VERSION = 1;
+@@ -65,7 +66,12 @@ export interface ChunkMsg extends Base {
+ export interface ByeMsg extends Base {
+   t: 'bye';
+ }
+-export type RoomMessage = PresenceMsg | PingMsg | EmoteMsg | WantMsg | ChunkMsg | ByeMsg;
++/** An additive protocol-v1 message: older apps drop unknown types and keep reading presence and pings. */
++export interface ChatMsg extends Base {
++  t: 'chat';
++  text: string;
++}
++export type RoomMessage = PresenceMsg | PingMsg | EmoteMsg | WantMsg | ChunkMsg | ByeMsg | ChatMsg;
+ 
+ // C0/C1 controls, zero-width characters, bidi marks, embeddings and isolates, BOM, line/paragraph separators,
+ // soft hyphen, combining grapheme joiner, Arabic letter mark, Mongolian vowel separator and the Hangul fillers
+@@ -147,6 +153,10 @@ export function validateMessage(raw: unknown): RoomMessage | null {
+     }
+     case 'bye':
+       return { t, ...base };
++    case 'chat': {
++      const text = validateChatText(raw.text);
++      return text.ok ? { t, ...base, text: text.text } : null;
++    }
+     default:
+       return null;
+   }
+diff --git a/src/shared/settingsChannels.ts b/src/shared/settingsChannels.ts
+index 0d76807ca51f2d4c63587d98b019e4a3f5dd2a3d..f8d758cbf330158dfa07338ec3fe101d360cd0ab 100644
+--- a/src/shared/settingsChannels.ts
++++ b/src/shared/settingsChannels.ts
+@@ -25,6 +25,7 @@ export const SETTINGS_CH = {
+   roomClipboard: 'room:clipboardCode',
+   roomCopy: 'room:copyCode',
+   roomRetryInternet: 'room:retryInternet',
++  roomOpenChat: 'room:openChat',
+   updateGet: 'update:get',
+   updateState: 'update:state',
+   updateCheck: 'update:check',
+diff --git a/tests/main/chatRoom.test.ts b/tests/main/chatRoom.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..1f7ce24e66a51fa9267cc4cadc8777a9716793c7
+--- /dev/null
++++ b/tests/main/chatRoom.test.ts
+@@ -0,0 +1,380 @@
++import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
++import { MAX_PACKET, open, seal, type RoomKeys } from '../../src/main/roomCrypto';
++import { RoomManager, type RemotePing } from '../../src/main/roomManager';
++import { CHAT_HISTORY_LIMIT, CHAT_MAX_LENGTH, type ChatEntry } from '../../src/shared/chat';
++import { makeRoomCode } from '../../src/shared/roomCode';
++import { decodeMessage, encodeMessage, type RoomMessage } from '../../src/shared/roomProtocol';
++import { FakeTransport } from './fixtures/fakeTransport';
++
++const KEYS: RoomKeys = { msgKey: Buffer.alloc(32, 1), relayTopic: 'room' };
++const CODE = makeRoomCode(Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8, 9]));
++const OTHER_CODE = makeRoomCode(Uint8Array.from([9, 8, 7, 6, 5, 4, 3, 2, 1]));
++
++class Remote {
++  seq = 0;
++  constructor(readonly peer: string, readonly key: string, readonly transport: FakeTransport) {}
++  packet(body: Record<string, unknown>): Buffer {
++    return seal(KEYS.msgKey, encodeMessage({ peer: this.peer, seq: ++this.seq, ts: Date.now(), ...body } as RoomMessage));
++  }
++  presence(extra: Record<string, unknown> = {}): void {
++    this.deliver({ t: 'presence', proto: 1, app: '0.5.1', name: 'Alex', color: 4, status: 'on', em: [], ...extra });
++  }
++  chat(text = 'Hello', extra: Record<string, unknown> = {}): void {
++    this.deliver({ t: 'chat', text, ...extra });
++  }
++  deliver(body: Record<string, unknown>): void {
++    this.transport.deliver(this.key, this.packet(body));
++  }
++}
++
++const rooms: RoomManager[] = [];
++let lan: FakeTransport;
++let room: RoomManager;
++let profile: { name: string; color: number; limit: number };
++let entries: ChatEntry[];
++
++const messageText = (entry: ChatEntry): string => entry.kind === 'message' ? entry.text : entry.ping;
++
++function makeRoom(transports: FakeTransport[], seed = 0xab, name = 'Me'): RoomManager {
++  const r = new RoomManager({
++    transports, now: () => Date.now(), randomBytes: (n) => new Uint8Array(n).fill(seed),
++    deriveKeys: async () => KEYS, appVersion: '0.5.1',
++    profile: () => seed === 0xab ? profile : { name, color: 2, limit: 5 },
++    resolveTarget: () => ({ displayId: 100, width: 1920, height: 1080 }), announceEmotes: () => [],
++  });
++  rooms.push(r);
++  return r;
++}
++
++function messages(transport = lan): RoomMessage[] {
++  return transport.sent.flatMap(({ packet }) => {
++    const plain = open(KEYS.msgKey, packet);
++    const message = plain && decodeMessage(plain);
++    return message ? [message] : [];
++  });
++}
++
++function pump(from: FakeTransport, to: FakeTransport, source: string): void {
++  for (const sent of from.sent.splice(0)) to.deliver(source, sent.packet);
++}
++
++beforeEach(() => {
++  vi.useFakeTimers({ now: 1_780_000_000_000 });
++  lan = new FakeTransport('lan');
++  profile = { name: 'Me', color: 1, limit: 5 };
++  entries = [];
++  room = makeRoom([lan]);
++  room.on('chat', (entry: ChatEntry) => entries.push(entry));
++});
++
++afterEach(() => {
++  for (const r of rooms.splice(0)) r.quit();
++  vi.useRealTimers();
++});
++
++describe('room chat', () => {
++  it('exchanges sealed messages between two RoomManagers with a matching self echo and remote identity', async () => {
++    const otherLan = new FakeTransport('lan');
++    const other = makeRoom([otherLan], 0x22, 'Friend');
++    await room.join(CODE);
++    await other.join(CODE);
++    pump(lan, otherLan, 'lan:me');
++    pump(otherLan, lan, 'lan:friend');
++    pump(lan, otherLan, 'lan:me');
++    await vi.advanceTimersByTimeAsync(3000);
++    lan.sent = [];
++    otherLan.sent = [];
++    expect(room.state().members).toHaveLength(2);
++    expect(other.state().members).toHaveLength(2);
++    const ts = Date.now();
++    expect(room.sendChat('  一起玩吧 🎮  ')).toEqual({ ok: true });
++    expect(messages()).toHaveLength(1);
++    const sent = messages()[0];
++    expect(sent).toMatchObject({ t: 'chat', text: '一起玩吧 🎮', peer: room.self, ts });
++    expect(lan.sent[0].packet.length).toBeLessThanOrEqual(MAX_PACKET);
++    pump(lan, otherLan, 'lan:me');
++    expect(room.chatHistory()).toEqual([expect.objectContaining({ text: '一起玩吧 🎮', name: 'Me', self: true, ts })]);
++    expect(other.chatHistory()).toEqual([{ ...room.chatHistory()[0], self: false }]);
++    expect(other.sendChat('Ready!')).toEqual({ ok: true });
++    pump(otherLan, lan, 'lan:friend');
++    expect(room.chatHistory().at(-1)).toMatchObject({ text: 'Ready!', name: 'Friend', color: 2, self: false });
++  });
++
++  it('returns actionable errors without recording or sending rejected text', async () => {
++    expect(room.sendChat('Hello')).toEqual({ ok: false, error: 'notInRoom' });
++    await room.join(CODE);
++    lan.sent = [];
++    expect(room.sendChat(' \n\u202e ')).toEqual({ ok: false, error: 'empty' });
++    expect(room.sendChat('x'.repeat(CHAT_MAX_LENGTH + 1))).toEqual({ ok: false, error: 'tooLong' });
++    expect(room.sendChat('🎮'.repeat(200))).toEqual({ ok: false, error: 'tooLong' });
++    room.setStatusFlags({ paused: true, roomMuted: false });
++    lan.sent = [];
++    expect(room.sendChat('Hello')).toEqual({ ok: false, error: 'paused' });
++    expect(lan.sent).toEqual([]);
++    expect(room.chatHistory()).toEqual([]);
++    expect(entries).toEqual([]);
++  });
++
++  it('stores safe text using the established member profile rather than packet-supplied identity fields', async () => {
++    await room.join(CODE);
++    const alex = new Remote('1111111111111111', 'lan:alex', lan);
++    alex.presence({ name: '\u202eAlex', color: 4 });
++    alex.chat('  <script>alert(1)</script>\nnext\u202e  ', { name: 'Impostor', color: 7, self: true, id: 'forged' });
++    expect(entries).toEqual([{
++      kind: 'message', id: `${alex.peer}:${alex.seq}`, peer: alex.peer, name: 'Alex', color: 4,
++      text: '<script>alert(1)</script> next', ts: Date.now(), self: false,
++    }]);
++  });
++
++  it('reports an unexpected send failure without echoing an unsent message or rejecting the IPC call', async () => {
++    await room.join(CODE);
++    new Remote('1111111111111111', 'lan:alex', lan).presence();
++    lan.sent = [];
++    vi.spyOn(lan, 'sendTo').mockImplementationOnce(() => { throw new Error('socket closed'); });
++    expect(room.sendChat('Could not send')).toEqual({ ok: false, error: 'failed' });
++    expect(room.chatHistory()).toEqual([]);
++    expect(entries).toEqual([]);
++    expect(lan.sent).toEqual([]);
++    expect(room.sendChat('Try again')).toEqual({ ok: true });
++    expect(messages()[0]).toMatchObject({ t: 'chat', text: 'Try again' });
++    expect(entries).toHaveLength(1);
++  });
++
++  it('ignores strangers, duplicate routes, local network echoes, stale packets and peers that left', async () => {
++    const net = new FakeTransport('internet');
++    const r = makeRoom([lan, net], 0x33);
++    await r.join(CODE);
++    const alex = new Remote('1111111111111111', 'lan:alex', lan);
++    alex.chat('Unknown');
++    expect(r.state().members).toHaveLength(1);
++    expect(r.chatHistory()).toEqual([]);
++    alex.presence();
++    const packet = alex.packet({ t: 'chat', text: 'One copy' });
++    lan.deliver(alex.key, packet);
++    net.deliver('net:alex', packet);
++    lan.deliver(alex.key, packet);
++    alex.chat('Stale', { ts: Date.now() - 3_600_000 });
++    expect(r.sendChat('Mine')).toEqual({ ok: true });
++    const echo = lan.sent.find(({ packet: p }) => {
++      const plain = open(KEYS.msgKey, p);
++      return plain && decodeMessage(plain)?.t === 'chat';
++    });
++    expect(echo).toBeDefined();
++    if (echo) net.deliver('net:self', echo.packet);
++    alex.deliver({ t: 'bye' });
++    alex.chat('Gone');
++    expect(r.chatHistory().map(messageText)).toEqual(['One copy', 'Mine']);
++  });
++
++  it('honors pause, room mute, member mute and protocol compatibility without using the ping display mapping', async () => {
++    await room.join(CODE);
++    const alex = new Remote('1111111111111111', 'lan:alex', lan);
++    alex.presence();
++    room.setStatusFlags({ paused: true, roomMuted: false });
++    alex.chat();
++    room.setStatusFlags({ paused: false, roomMuted: true });
++    alex.chat();
++    expect(room.sendChat('Room mute only silences incoming messages')).toEqual({ ok: true });
++    room.setStatusFlags({ paused: false, roomMuted: false });
++    room.muteMember(alex.peer, true);
++    alex.chat();
++    room.muteMember(alex.peer, false);
++    alex.presence({ proto: 2 });
++    alex.chat();
++    alex.presence({ proto: 1 });
++    alex.chat('Allowed', { d: 99 });
++    expect(room.chatHistory().map(messageText)).toEqual(['Room mute only silences incoming messages', 'Allowed']);
++  });
++
++  it('records actual local and remote signals once with sender, time and type without extra packets', async () => {
++    await room.join(CODE);
++    const alex = new Remote('1111111111111111', 'lan:alex', lan);
++    alex.presence({ name: 'Alex', color: 4 });
++    lan.sent = [];
++    const ts = Date.now();
++    room.sendPing('omw', { d: 1, x: 0.5, y: 0.5 });
++    const sent = messages();
++    expect(sent).toHaveLength(1);
++    expect(sent[0]).toMatchObject({ t: 'ping', peer: room.self, ts });
++    expect(room.chatHistory()[0]).toEqual({
++      kind: 'ping', id: `${room.self}:${sent[0].seq}`, peer: room.self,
++      name: 'Me', color: 1, ping: 'omw', ts, self: true,
++    });
++
++    const remoteTs = ts - 250;
++    const packet = alex.packet({ t: 'ping', ping: 'danger', d: 1, x: 0.25, y: 0.5, ts: remoteTs });
++    lan.deliver(alex.key, packet);
++    lan.deliver(alex.key, packet);
++    expect(room.chatHistory()[1]).toEqual({
++      kind: 'ping', id: `${alex.peer}:${alex.seq}`, peer: alex.peer,
++      name: 'Alex', color: 4, ping: 'danger', ts: remoteTs, self: false,
++    });
++    expect(entries).toHaveLength(2);
++    expect(messages()).toHaveLength(1);
++    expect(entries[1]).not.toHaveProperty('text');
++  });
++
++  it('adds no signal history for idle, paused, muted, incompatible, unmapped or rate-limited signals', async () => {
++    room.sendPing('danger', { d: 1, x: 0.5, y: 0.5 });
++    expect(room.chatHistory()).toEqual([]);
++    await room.join(CODE);
++    const alex = new Remote('1111111111111111', 'lan:alex', lan);
++    alex.presence();
++    const ping = (extra: Record<string, unknown> = {}) =>
++      alex.deliver({ t: 'ping', ping: 'danger', d: 1, x: 0.5, y: 0.5, ...extra });
++    room.setStatusFlags({ paused: true, roomMuted: false });
++    room.sendPing('danger', { d: 1, x: 0.5, y: 0.5 });
++    ping();
++    room.setStatusFlags({ paused: false, roomMuted: true });
++    ping();
++    room.setStatusFlags({ paused: false, roomMuted: false });
++    room.muteMember(alex.peer, true);
++    ping();
++    room.muteMember(alex.peer, false);
++    alex.presence({ proto: 2 });
++    ping();
++    alex.presence({ proto: 1 });
++    ping({ x: 2 });
++    expect(room.chatHistory()).toEqual([]);
++    profile.limit = 1;
++    ping();
++    ping();
++    expect(room.chatHistory()).toHaveLength(1);
++    expect(room.chatHistory()[0]).toMatchObject({ kind: 'ping', ping: 'danger', self: false });
++
++    const noDisplayLan = new FakeTransport('lan');
++    const noDisplay = new RoomManager({
++      transports: [noDisplayLan], now: () => Date.now(), randomBytes: (n) => new Uint8Array(n).fill(0x44),
++      deriveKeys: async () => KEYS, appVersion: '0.5.1', profile: () => profile,
++      resolveTarget: () => null, announceEmotes: () => [],
++    });
++    rooms.push(noDisplay);
++    await noDisplay.join(CODE);
++    const other = new Remote('2222222222222222', 'lan:other', noDisplayLan);
++    other.presence();
++    other.deliver({ t: 'ping', ping: 'danger', d: 1, x: 0.5, y: 0.5 });
++    expect(noDisplay.chatHistory()).toEqual([]);
++  });
++
++  it('rate limits each sender independently of pings and refills without queuing', async () => {
++    await room.join(CODE);
++    const alex = new Remote('1111111111111111', 'lan:alex', lan);
++    const bob = new Remote('2222222222222222', 'lan:bob', lan);
++    alex.presence();
++    bob.presence({ name: 'Bob' });
++    const pings: RemotePing[] = [];
++    room.on('remotePing', (ping: RemotePing) => pings.push(ping));
++    profile.limit = 2;
++    for (let n = 0; n < 8; n++) alex.chat(`Alex ${n}`);
++    for (let n = 0; n < 3; n++) bob.chat(`Bob ${n}`);
++    for (let n = 0; n < 3; n++) alex.deliver({ t: 'ping', ping: 'danger', d: 1, x: 0.5, y: 0.5 });
++    expect(entries.filter((entry) => entry.kind === 'message')).toHaveLength(6);
++    expect(entries.filter((entry) => entry.kind === 'ping')).toHaveLength(2);
++    expect(pings).toHaveLength(2);
++    await vi.advanceTimersByTimeAsync(1000);
++    alex.chat('Refilled');
++    expect(entries.filter((entry) => entry.kind === 'message')).toHaveLength(7);
++    expect(entries.at(-1)).toMatchObject({ kind: 'message', text: 'Refilled' });
++  });
++
++  it('paces outgoing chat separately from relay pings and broadcasts once for multiple relay members', async () => {
++    const net = new FakeTransport('internet');
++    const r = makeRoom([lan, net], 0x33);
++    await r.join(CODE);
++    new Remote('1111111111111111', 'lan:alex', lan).presence();
++    new Remote('2222222222222222', 'net:bob', net).presence();
++    new Remote('4444444444444444', 'net:charlie', net).presence();
++    lan.sent = [];
++    net.sent = [];
++    for (let n = 0; n < 15; n++) r.sendPing('danger', { d: 1, x: 0.5, y: 0.5 });
++    expect(messages(net).filter((message) => message.t === 'ping')).toHaveLength(10);
++    for (let n = 0; n < 3; n++) expect(r.sendChat(`Message ${n}`)).toEqual({ ok: true });
++    expect(r.sendChat('Flood')).toEqual({ ok: false, error: 'rateLimited' });
++    expect(messages(net).filter((message) => message.t === 'chat')).toHaveLength(3);
++    expect(messages(lan).filter((message) => message.t === 'chat')).toHaveLength(3);
++    expect(r.chatHistory().filter((entry) => entry.kind === 'message')).toHaveLength(3);
++    expect(r.chatHistory().filter((entry) => entry.kind === 'ping')).toHaveLength(15);
++    await vi.advanceTimersByTimeAsync(1000);
++    expect(r.sendChat('Refilled')).toEqual({ ok: true });
++    expect(r.sendChat('Still capped')).toEqual({ ok: false, error: 'rateLimited' });
++  });
++
++  it('prefers LAN for chat and falls back to a live relay path, then honors internet being disabled', async () => {
++    const net = new FakeTransport('internet');
++    const r = makeRoom([lan, net], 0x33);
++    await r.join(CODE);
++    const alex = new Remote('1111111111111111', 'lan:alex', lan);
++    alex.presence();
++    new Remote(alex.peer, 'net:alex', net).presence({ seq: 20 });
++    lan.sent = [];
++    net.sent = [];
++    expect(r.sendChat('LAN')).toEqual({ ok: true });
++    expect(messages(lan).map((message) => message.t)).toEqual(['chat']);
++    expect(messages(net)).toEqual([]);
++    vi.setSystemTime(Date.now() + 7000);
++    lan.sent = [];
++    expect(r.sendChat('Relay')).toEqual({ ok: true });
++    expect(messages(lan)).toEqual([]);
++    expect(messages(net).filter((message) => message.t === 'chat')).toHaveLength(1);
++    r.setInternetAllowed(false);
++    net.sent = [];
++    expect(r.sendChat('Local echo while alone')).toEqual({ ok: true });
++    expect(net.sent).toEqual([]);
++  });
++
++  it('keeps only the last 100 session messages and protects history from event and caller mutations', async () => {
++    await room.join(CODE);
++    room.on('chat', (entry: ChatEntry) => { if (entry.kind === 'message') entry.text = 'Changed by listener'; });
++    for (let n = 0; n < CHAT_HISTORY_LIMIT + 5; n++) {
++      expect(room.sendChat(`Message ${n}`)).toEqual({ ok: true });
++      await vi.advanceTimersByTimeAsync(1000);
++    }
++    const history = room.chatHistory();
++    expect(history).toHaveLength(CHAT_HISTORY_LIMIT);
++    expect(history[0]).toMatchObject({ kind: 'message', text: 'Message 5' });
++    expect(history.at(-1)).toMatchObject({ kind: 'message', text: 'Message 104' });
++    if (history[0].kind === 'message') history[0].text = 'Changed by caller';
++    history.pop();
++    expect(room.chatHistory()).toHaveLength(CHAT_HISTORY_LIMIT);
++    expect(room.chatHistory()[0]).toMatchObject({ kind: 'message', text: 'Message 5' });
++    profile.name = 'Renamed';
++    expect(room.sendChat('New name')).toEqual({ ok: true });
++    expect(room.chatHistory().at(-1)?.name).toBe('Renamed');
++    expect(room.chatHistory()[0].name).toBe('Me');
++  });
++
++  it('clears history and rate buckets on leave, changing rooms and quit, while a rejected join keeps the room', async () => {
++    const resets: number[] = [];
++    room.on('chatReset', () => resets.push(room.chatHistory().length));
++    await room.join(CODE);
++    for (let n = 0; n < 3; n++) expect(room.sendChat(`Before ${n}`)).toEqual({ ok: true });
++    expect(await room.join('not a room code')).toEqual({ ok: false, error: 'invalid' });
++    expect(room.chatHistory()).toHaveLength(3);
++    await room.join(OTHER_CODE);
++    expect(room.chatHistory()).toEqual([]);
++    for (let n = 0; n < 3; n++) expect(room.sendChat(`After ${n}`)).toEqual({ ok: true });
++    room.leave();
++    expect(room.chatHistory()).toEqual([]);
++    expect(room.sendChat('After leave')).toEqual({ ok: false, error: 'notInRoom' });
++    await room.join(CODE);
++    expect(room.sendChat('After rejoin')).toEqual({ ok: true });
++    room.quit();
++    expect(room.chatHistory()).toEqual([]);
++    expect(resets).toEqual([0, 0, 0]);
++  });
++
++  it('fits worst-case message metadata and escaped text under the encrypted packet limit', async () => {
++    await room.join(CODE);
++    new Remote('1111111111111111', 'lan:alex', lan).presence();
++    for (const text of ['🎮'.repeat(199) + 'ab', '"'.repeat(256), '\\'.repeat(256)]) {
++      lan.sent = [];
++      expect(room.sendChat(text)).toEqual({ ok: true });
++      expect(lan.sent[0].packet.length).toBeLessThanOrEqual(MAX_PACKET);
++      expect(messages()[0]).toMatchObject({ t: 'chat', text });
++      const packet = seal(KEYS.msgKey, encodeMessage({
++        t: 'chat', peer: room.self, seq: Number.MAX_SAFE_INTEGER, ts: Number.MAX_SAFE_INTEGER, text,
++      }));
++      expect(packet.length).toBeLessThanOrEqual(MAX_PACKET);
++    }
++  });
++});
+diff --git a/tests/main/chatWindow.test.ts b/tests/main/chatWindow.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..724cea09524df892df7c82bcb0cee4e64758fc91
+--- /dev/null
++++ b/tests/main/chatWindow.test.ts
+@@ -0,0 +1,488 @@
++import type { EventEmitter } from 'node:events';
++import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
++import { CHAT_CH } from '../../src/shared/chatChannels';
++import type { ChatSendResult } from '../../src/shared/chat';
++import type { ChatState } from '../../src/shared/ipc';
++
++type Rect = { x: number; y: number; width: number; height: number };
++type OpenHandler = (details: { url: string }) => { action: string };
++type FakeContents = EventEmitter & {
++  loading: boolean;
++  destroyed: boolean;
++  openHandler: OpenHandler | null;
++  sent: Array<[string, unknown]>;
++};
++type FakeWindow = EventEmitter & {
++  webContents: FakeContents;
++  bounds: Rect;
++  visible: boolean;
++  focused: boolean;
++  focusable: boolean;
++  clickThrough: boolean;
++  destroyed: boolean;
++  title: string;
++  workspaces: { on: boolean; options: unknown } | null;
++  actions: string[];
++  destroy(): void;
++};
++
++const h = vi.hoisted(() => ({
++  windows: [] as unknown[],
++  handlers: new Map<string, (event: unknown, ...args: unknown[]) => unknown>(),
++  shortcuts: new Map<string, () => void>(),
++  registered: [] as string[],
++  unregistered: [] as string[],
++  area: { x: 0, y: 0, width: 1920, height: 1040 } as Rect,
++  registrationWorks: true,
++  registrationThrows: false,
++  isMac: false,
++  loadError: null as Error | null,
++}));
++
++vi.mock('electron', async () => {
++  const { EventEmitter: Emitter } = await import('node:events');
++  class FakeContents extends Emitter {
++    loading = true;
++    destroyed = false;
++    openHandler: OpenHandler | null = null;
++    sent: Array<[string, unknown]> = [];
++    isLoading(): boolean { return this.loading; }
++    isDestroyed(): boolean { return this.destroyed; }
++    setWindowOpenHandler(handler: OpenHandler): void { this.openHandler = handler; }
++    send(channel: string, payload: unknown): void { this.sent.push([channel, payload]); }
++  }
++  class FakeWindow extends Emitter {
++    webContents = new FakeContents();
++    bounds: Rect;
++    visible = false;
++    focused = false;
++    focusable: boolean;
++    clickThrough = false;
++    destroyed = false;
++    title: string;
++    workspaces: { on: boolean; options: unknown } | null = null;
++    actions: string[] = [];
++    constructor(options: Rect & { focusable: boolean; title: string }) {
++      super();
++      this.bounds = options;
++      this.focusable = options.focusable;
++      this.title = options.title;
++      h.windows.push(this);
++    }
++    isDestroyed(): boolean { return this.destroyed; }
++    setBounds(bounds: Rect): void { this.bounds = bounds; }
++    setTitle(title: string): void { this.title = title; }
++    setAlwaysOnTop(): void {}
++    setVisibleOnAllWorkspaces(on: boolean, options: unknown): void { this.workspaces = { on, options }; }
++    setIgnoreMouseEvents(on: boolean): void {
++      this.clickThrough = on;
++      this.actions.push(`mouse:${on}`);
++    }
++    setFocusable(on: boolean): void {
++      this.focusable = on;
++      this.actions.push(`focusable:${on}`);
++    }
++    show(): void {
++      this.visible = true;
++      this.actions.push('show');
++    }
++    showInactive(): void {
++      this.visible = true;
++      this.actions.push('showInactive');
++    }
++    focus(): void {
++      this.focused = true;
++      this.actions.push('focus');
++    }
++    hide(): void {
++      this.visible = false;
++      this.focused = false;
++      this.actions.push('hide');
++    }
++    destroy(): void {
++      if (this.destroyed) return;
++      this.destroyed = this.webContents.destroyed = true;
++      this.visible = this.focused = false;
++      this.emit('closed');
++    }
++  }
++  const screen = Object.assign(new Emitter(), { getPrimaryDisplay: () => ({ workArea: h.area }) });
++  return {
++    BrowserWindow: FakeWindow,
++    screen,
++    ipcMain: {
++      handle: (channel: string, handler: (event: unknown, ...args: unknown[]) => unknown) =>
++        h.handlers.set(channel, handler),
++      removeHandler: (channel: string) => h.handlers.delete(channel),
++    },
++    globalShortcut: {
++      register: (shortcut: string, callback: () => void): boolean => {
++        h.registered.push(shortcut);
++        if (h.registrationThrows) throw new Error('shortcut unavailable');
++        if (!h.registrationWorks) return false;
++        h.shortcuts.set(shortcut, callback);
++        return true;
++      },
++      unregister: (shortcut: string): void => {
++        h.unregistered.push(shortcut);
++        h.shortcuts.delete(shortcut);
++      },
++    },
++  };
++});
++
++vi.mock('../../src/main/paths', () => ({
++  get IS_MAC() { return h.isMac; },
++  loadPage: () => h.loadError ? Promise.reject(h.loadError) : Promise.resolve(),
++  pageUrl: () => 'lolping://app/chat/index.html',
++  preloadPath: () => 'chat-preload.js',
++}));
++
++type Manager = InstanceType<typeof import('../../src/main/chatWindow').ChatWindow>;
++let chat: Manager;
++let state: Omit<ChatState, 'composing' | 'shortcutAvailable'>;
++let shortcutAllowed: boolean;
++let send: ReturnType<typeof vi.fn<(text: string) => ChatSendResult>>;
++let onComposing: ReturnType<typeof vi.fn<(on: boolean) => void>>;
++let fakeScreen: EventEmitter;
++
++function windowAt(index = 0): FakeWindow {
++  const win = h.windows[index];
++  if (!win) throw new Error(`window ${index} was not created`);
++  return win as FakeWindow;
++}
++
++function ready(win = windowAt()): void {
++  win.webContents.loading = false;
++  win.emit('ready-to-show');
++}
++
++function invoke(channel: string, sender: unknown, ...args: unknown[]): unknown {
++  const handler = h.handlers.get(channel);
++  if (!handler) throw new Error(`IPC handler ${channel} was not registered`);
++  return handler({ sender }, ...args);
++}
++
++function triggerShortcut(): void {
++  const callback = h.shortcuts.get('Control+Alt+Enter');
++  if (!callback) throw new Error('chat shortcut was not registered');
++  callback();
++}
++
++beforeEach(async () => {
++  vi.useFakeTimers();
++  h.windows.length = h.registered.length = h.unregistered.length = 0;
++  h.handlers.clear();
++  h.shortcuts.clear();
++  h.area = { x: 0, y: 0, width: 1920, height: 1040 };
++  h.registrationWorks = true;
++  h.registrationThrows = h.isMac = false;
++  h.loadError = null;
++  shortcutAllowed = true;
++  state = { messages: [], roomCode: 'PING-7KQ4M-2HXTR', lang: 'en', platform: 'win', enabled: true };
++  send = vi.fn((): ChatSendResult => ({ ok: true }));
++  onComposing = vi.fn();
++  vi.resetModules();
++  const { screen } = await import('electron');
++  fakeScreen = screen as unknown as EventEmitter;
++  fakeScreen.removeAllListeners();
++  const { ChatWindow } = await import('../../src/main/chatWindow');
++  chat = new ChatWindow({ state: () => state, send, onComposing, shortcutAllowed: () => shortcutAllowed });
++});
++
++afterEach(() => {
++  chat.destroy();
++  vi.clearAllTimers();
++  vi.useRealTimers();
++  vi.restoreAllMocks();
++});
++
++describe('ChatWindow', () => {
++  it('shows a received message passively without focus or mouse capture, then hides it', () => {
++    chat.notify();
++    const win = windowAt();
++    expect(win.visible).toBe(false);
++    ready(win);
++    expect(win.visible).toBe(true);
++    expect(win.focused).toBe(false);
++    expect(win.focusable).toBe(false);
++    expect(win.clickThrough).toBe(true);
++    expect(win.actions).not.toContain('focus');
++    expect(onComposing).not.toHaveBeenCalled();
++    vi.advanceTimersByTime(9999);
++    expect(win.visible).toBe(true);
++    vi.advanceTimersByTime(1);
++    expect(win.visible).toBe(false);
++  });
++
++  it('extends the passive display when another message arrives without adding timers', () => {
++    chat.notify();
++    ready();
++    vi.advanceTimersByTime(9000);
++    chat.notify();
++    expect(vi.getTimerCount()).toBe(1);
++    vi.advanceTimersByTime(9000);
++    expect(windowAt().visible).toBe(true);
++    vi.advanceTimersByTime(1000);
++    expect(windowAt().visible).toBe(false);
++    expect(windowAt().focused).toBe(false);
++  });
++
++  it('takes focus only for input, then hides before restoring click-through mode', () => {
++    chat.open();
++    const win = windowAt();
++    expect(onComposing.mock.calls).toEqual([[true]]);
++    expect(win.visible).toBe(false);
++    ready(win);
++    expect(win.visible && win.focused && win.focusable).toBe(true);
++    expect(win.clickThrough).toBe(false);
++    const beforeClose = win.actions.length;
++    chat.closeInput();
++    expect(onComposing.mock.calls).toEqual([[true], [false]]);
++    expect(win.actions.slice(beforeClose)).toEqual(['hide', 'mouse:true', 'focusable:false']);
++    expect(win.visible || win.focused || win.focusable).toBe(false);
++    expect(win.clickThrough).toBe(true);
++    chat.closeInput();
++    expect(onComposing).toHaveBeenCalledTimes(2);
++  });
++
++  it('keeps recent messages passive after input closes without stealing focus again', () => {
++    chat.notify();
++    ready();
++    chat.open();
++    chat.closeInput();
++    const win = windowAt();
++    expect(win.visible).toBe(true);
++    expect(win.focused || win.focusable).toBe(false);
++    expect(win.clickThrough).toBe(true);
++    expect(win.actions.slice(-4)).toEqual(['hide', 'mouse:true', 'focusable:false', 'showInactive']);
++    vi.advanceTimersByTime(10_000);
++    expect(win.visible).toBe(false);
++  });
++
++  it('does not hide an active composer when the passive display expires', () => {
++    chat.notify();
++    ready();
++    chat.open();
++    vi.advanceTimersByTime(10_000);
++    expect(windowAt().visible && windowAt().focused).toBe(true);
++    expect(chat.state().composing).toBe(true);
++    chat.closeInput();
++    expect(windowAt().visible).toBe(false);
++  });
++
++  it('releases input suspension on blur and renderer crash and can open a replacement window', () => {
++    chat.open();
++    ready();
++    const first = windowAt();
++    first.emit('blur');
++    expect(chat.state().composing).toBe(false);
++    expect(first.clickThrough).toBe(true);
++    chat.open();
++    first.webContents.emit('render-process-gone', {}, { reason: 'crashed' });
++    expect(first.destroyed).toBe(true);
++    expect(chat.state().composing).toBe(false);
++    expect(onComposing.mock.calls).toEqual([[true], [false], [true], [false]]);
++    chat.open();
++    expect(h.windows).toHaveLength(2);
++    ready(windowAt(1));
++    expect(windowAt(1).focused).toBe(true);
++  });
++
++  it('releases input suspension when the native window disappears while composing', () => {
++    chat.open();
++    ready();
++    windowAt().destroy();
++    expect(onComposing.mock.calls).toEqual([[true], [false]]);
++    expect(chat.state().composing).toBe(false);
++  });
++
++  it('unregisters the shortcut and hides input on pause or leave', () => {
++    for (const change of [{ enabled: false }, { roomCode: null }]) {
++      state = { ...state, enabled: true, roomCode: 'PING-7KQ4M-2HXTR' };
++      chat.refresh();
++      chat.open();
++      if (windowAt().webContents.loading) ready();
++      chat.notify();
++      state = { ...state, ...change };
++      chat.refresh();
++      expect(chat.state().composing).toBe(false);
++      expect(windowAt().visible).toBe(false);
++      expect(windowAt().clickThrough).toBe(true);
++      expect(h.shortcuts.size).toBe(0);
++      expect(vi.getTimerCount()).toBe(0);
++      expect(h.unregistered.at(-1)).toBe('Control+Alt+Enter');
++    }
++    expect(onComposing.mock.calls).toEqual([[true], [false], [true], [false]]);
++  });
++
++  it('creates no window or shortcut when disabled or outside a room', () => {
++    for (const inactive of [{ ...state, enabled: false }, { ...state, roomCode: null }]) {
++      state = inactive;
++      chat.refresh();
++      chat.open();
++      chat.notify();
++    }
++    expect(h.windows).toHaveLength(0);
++    expect(h.registered).toEqual([]);
++    expect(onComposing).not.toHaveBeenCalled();
++    expect(vi.getTimerCount()).toBe(0);
++  });
++
++  it('registers once and toggles input with the room chat shortcut', () => {
++    chat.refresh();
++    chat.refresh();
++    expect(h.registered).toEqual(['Control+Alt+Enter']);
++    expect(h.windows).toHaveLength(0);
++    triggerShortcut();
++    ready();
++    expect(chat.state().composing).toBe(true);
++    triggerShortcut();
++    expect(chat.state().composing).toBe(false);
++    expect(windowAt().visible).toBe(false);
++  });
++
++  it('keeps the settings and tray action available when the shortcut is taken or reserved', () => {
++    for (const failure of ['taken', 'throws', 'reserved']) {
++      h.registrationWorks = failure !== 'taken';
++      h.registrationThrows = failure === 'throws';
++      shortcutAllowed = failure !== 'reserved';
++      chat.refresh();
++      expect(chat.state().shortcutAvailable).toBe(false);
++      chat.open();
++      if (windowAt().webContents.loading) ready();
++      expect(windowAt().focused).toBe(true);
++      chat.closeInput();
++    }
++  });
++
++  it('rejects IPC from other windows and sends only strings from its active composer', () => {
++    chat.open();
++    ready();
++    const win = windowAt();
++    expect(invoke(CHAT_CH.get, {})).toBeNull();
++    expect(invoke(CHAT_CH.send, {}, 'forged')).toEqual({ ok: false, error: 'notInRoom' });
++    invoke(CHAT_CH.close, {});
++    expect(chat.state().composing).toBe(true);
++    expect(send).not.toHaveBeenCalled();
++    expect(invoke(CHAT_CH.get, win.webContents)).toMatchObject({ composing: true, roomCode: state.roomCode });
++    expect(invoke(CHAT_CH.send, win.webContents, { text: 'wrong type' })).toEqual({ ok: false, error: 'empty' });
++    expect(send).not.toHaveBeenCalled();
++    send.mockReturnValueOnce({ ok: false, error: 'rateLimited' });
++    expect(invoke(CHAT_CH.send, win.webContents, 'hello')).toEqual({ ok: false, error: 'rateLimited' });
++    expect(send.mock.calls).toEqual([['hello']]);
++    invoke(CHAT_CH.close, win.webContents);
++    expect(chat.state().composing).toBe(false);
++    expect(invoke(CHAT_CH.send, win.webContents, 'hidden')).toEqual({ ok: false, error: 'notInRoom' });
++    expect(send).toHaveBeenCalledTimes(1);
++  });
++
++  it('places the pane inside the primary work area and resizes it on display changes', () => {
++    chat.notify();
++    ready();
++    const win = windowAt();
++    expect(win.bounds).toEqual({ x: 12, y: 708, width: 440, height: 320 });
++    h.area = { x: -1280, y: 40, width: 320, height: 200 };
++    fakeScreen.emit('display-metrics-changed');
++    expect(win.bounds).toEqual({ x: -1268, y: 52, width: 296, height: 176 });
++    h.area = { x: 1920, y: -900, width: 1600, height: 900 };
++    fakeScreen.emit('display-removed');
++    expect(win.bounds).toEqual({ x: 1932, y: -332, width: 440, height: 320 });
++    expect(h.windows).toHaveLength(1);
++    expect(win.focused).toBe(false);
++  });
++
++  it('fits its native bounds to the visible HUD while retaining the bottom anchor', () => {
++    chat.open();
++    ready();
++    const win = windowAt();
++    for (const raw of [null, '60', NaN, Infinity, -Infinity]) invoke(CHAT_CH.resize, win.webContents, raw);
++    invoke(CHAT_CH.resize, {}, 60);
++    expect(win.bounds.height).toBe(320);
++    invoke(CHAT_CH.resize, win.webContents, 65.4);
++    expect(win.bounds).toEqual({ x: 12, y: 962, width: 440, height: 66 });
++    invoke(CHAT_CH.resize, win.webContents, -100);
++    expect(win.bounds).toEqual({ x: 12, y: 994, width: 440, height: 34 });
++    invoke(CHAT_CH.resize, win.webContents, 99999);
++    expect(win.bounds).toEqual({ x: 12, y: 708, width: 440, height: 320 });
++    expect(chat.state().composing).toBe(true);
++  });
++
++  it('keeps macOS chat visible on all workspaces and fullscreen spaces', () => {
++    h.isMac = true;
++    state.platform = 'mac';
++    chat.notify();
++    expect(windowAt().workspaces).toEqual({ on: true, options: { visibleOnFullScreen: true } });
++  });
++
++  it('blocks foreign pages, schemes and windows while allowing its own page to reload', () => {
++    chat.open();
++    const contents = windowAt().webContents;
++    for (const url of [
++      'https://example.com/', 'file:///C:/x.html', 'lolping://app/settings/index.html',
++      'lolping://other/chat/index.html', 'lolping://app/chat/other.html', 'javascript:alert(1)', 'not a url',
++    ]) {
++      const event = { url, preventDefault: vi.fn() };
++      contents.emit('will-navigate', event);
++      expect(event.preventDefault, url).toHaveBeenCalledOnce();
++    }
++    for (const url of ['lolping://app/chat/index.html', 'lolping://app/chat/index.html?x=1#history']) {
++      const event = { url, preventDefault: vi.fn() };
++      contents.emit('will-navigate', event);
++      expect(event.preventDefault, url).not.toHaveBeenCalled();
++    }
++    expect(contents.openHandler?.({ url: 'lolping://app/chat/index.html' })).toEqual({ action: 'deny' });
++  });
++
++  it('clears recent display and closes input when a room session resets', () => {
++    chat.refresh();
++    chat.notify();
++    ready();
++    chat.open();
++    chat.reset();
++    expect(chat.state().composing).toBe(false);
++    expect(windowAt().visible).toBe(false);
++    expect(vi.getTimerCount()).toBe(0);
++    expect(onComposing.mock.calls).toEqual([[true], [false]]);
++    expect(chat.state().shortcutAvailable).toBe(true);
++  });
++
++  it('releases input and destroys the window when its page fails to load', async () => {
++    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
++    h.loadError = new Error('load failed');
++    chat.open();
++    await Promise.resolve();
++    expect(windowAt().destroyed).toBe(true);
++    expect(chat.state().composing).toBe(false);
++    expect(onComposing.mock.calls).toEqual([[true], [false]]);
++    expect(warn).toHaveBeenCalledWith('[chat]', h.loadError);
++  });
++
++  it('cleans up timers, shortcut, IPC and display listeners on shutdown and stays destroyed', () => {
++    chat.refresh();
++    chat.notify();
++    ready();
++    chat.open();
++    const win = windowAt();
++    chat.destroy();
++    expect(win.destroyed).toBe(true);
++    expect(chat.state().composing).toBe(false);
++    expect(onComposing.mock.calls).toEqual([[true], [false]]);
++    expect(h.shortcuts.size).toBe(0);
++    expect(h.handlers.size).toBe(0);
++    expect(vi.getTimerCount()).toBe(0);
++    for (const event of ['display-added', 'display-removed', 'display-metrics-changed']) {
++      expect(fakeScreen.listenerCount(event)).toBe(0);
++    }
++    const actions = [...win.actions];
++    chat.destroy();
++    chat.refresh();
++    chat.notify();
++    chat.open();
++    win.emit('ready-to-show');
++    vi.advanceTimersByTime(10_000);
++    expect(win.actions).toEqual(actions);
++    expect(h.windows).toHaveLength(1);
++    expect(h.unregistered).toEqual(['Control+Alt+Enter']);
++  });
++});
+diff --git a/tests/main/lanRoom.test.ts b/tests/main/lanRoom.test.ts
+index c0b2b082e1fbc866afbc84073ca8b7c1f1fb5ecc..e19050a4348574713bc3cba3affd8d60e9a60ef4 100644
+--- a/tests/main/lanRoom.test.ts
++++ b/tests/main/lanRoom.test.ts
+@@ -2,9 +2,10 @@ import { randomBytes } from 'node:crypto';
+ import { createSocket } from 'node:dgram';
+ import { afterEach, describe, expect, it } from 'vitest';
+ import { LanTransport } from '../../src/main/lanTransport';
+-import { deriveRoomKeys } from '../../src/main/roomCrypto';
++import { deriveRoomKeys, MAX_PACKET, open as openPacket } from '../../src/main/roomCrypto';
+ import { RoomManager, type RemotePing, type RoomToast } from '../../src/main/roomManager';
+ import { makeRoomCode } from '../../src/shared/roomCode';
++import { decodeMessage } from '../../src/shared/roomProtocol';
+ 
+ // Two rooms on loopback. Loopback carries no broadcast, so each transport is seeded with the other's port.
+ const A_PORT = 47_501;
+@@ -70,6 +71,50 @@ describe('two rooms over loopback UDP', () => {
+     expect(b.room.state().members).toHaveLength(1);
+   });
+ 
++  it('exchanges encrypted Chinese and emoji chat both ways while pings keep working', async () => {
++    const a = peer(A_PORT, B_PORT, '小明');
++    const b = peer(B_PORT, A_PORT, '队友');
++    open = [a, b];
++    const packets: Uint8Array[] = [];
++    b.lan.on('packet', (_peer: string, packet: Uint8Array) => packets.push(packet));
++    await Promise.all([a.room.join(CODE), b.room.join(CODE)]);
++    await until(() => a.room.state().members.length === 2 && b.room.state().members.length === 2);
++
++    expect(a.room.sendChat('  一起推线吧 🎮👩‍💻  ')).toEqual({ ok: true });
++    await until(() => b.room.chatHistory().length === 1);
++    expect(b.room.chatHistory()[0]).toEqual({ ...a.room.chatHistory()[0], self: false });
++    expect(b.room.chatHistory()[0]).toMatchObject({ peer: a.room.self, name: '小明', text: '一起推线吧 🎮👩‍💻' });
++
++    expect(b.room.sendChat('收到，我来了！😀')).toEqual({ ok: true });
++    await until(() => a.room.chatHistory().length === 2);
++    expect(a.room.chatHistory()[1]).toEqual({ ...b.room.chatHistory()[1], self: false });
++    expect(a.room.chatHistory()[1]).toMatchObject({ peer: b.room.self, name: '队友', text: '收到，我来了！😀' });
++
++    const keys = await deriveRoomKeys(CODE);
++    const packet = packets.find((candidate) => {
++      const plain = openPacket(keys.msgKey, candidate);
++      return plain !== null && decodeMessage(plain)?.t === 'chat';
++    });
++    expect(packet).toBeDefined();
++    if (packet) {
++      expect(packet.length).toBeLessThanOrEqual(MAX_PACKET);
++      expect(openPacket(Buffer.alloc(32, 2), packet)).toBeNull();
++      expect(Buffer.from(packet).includes(Buffer.from('一起推线吧'))).toBe(false);
++    }
++
++    a.room.sendPing('push', { d: 1, x: 0.5, y: 0.5 });
++    b.room.sendPing('omw', { d: 1, x: 0.25, y: 1 });
++    await until(() => b.pings.length === 1 && a.pings.length === 1);
++    expect(b.pings[0]).toEqual({ displayId: 1, x: 500, y: 250, id: 'push', tag: { name: '小明', color: 1 } });
++    expect(a.pings[0]).toEqual({ displayId: 1, x: 250, y: 500, id: 'omw', tag: { name: '队友', color: 1 } });
++    expect(a.room.chatHistory()).toHaveLength(4);
++    expect(b.room.chatHistory()).toHaveLength(4);
++    expect(a.room.chatHistory().filter((entry) => entry.kind === 'ping')).toEqual(expect.arrayContaining([
++      expect.objectContaining({ peer: a.room.self, name: '小明', ping: 'push', self: true }),
++      expect.objectContaining({ peer: b.room.self, name: '队友', ping: 'omw', self: false }),
++    ]));
++  });
++
+   it('see a member who left and joined the same room again', async () => {
+     const a = peer(A_PORT, B_PORT, 'Alice');
+     const b = peer(B_PORT, A_PORT, 'Bob');
+diff --git a/tests/main/tray.test.ts b/tests/main/tray.test.ts
+index eb04aef596038b57f3bb66b80e5a3219c4398173..fdac6627bdcf651911001d93c98b2586e145f53e 100644
+--- a/tests/main/tray.test.ts
++++ b/tests/main/tray.test.ts
+@@ -59,7 +59,7 @@ vi.mock('electron', () => ({
+ import { AppTray, trayUpdateFrom } from '../../src/main/tray';
+ import { strings } from '../../src/shared/i18n';
+ 
+-const room = { joinClipboard: vi.fn(), create: vi.fn(), copyCode: vi.fn(), setMuted: vi.fn(), leave: vi.fn(), openSettings: vi.fn() };
++const room = { joinClipboard: vi.fn(), create: vi.fn(), copyCode: vi.fn(), setMuted: vi.fn(), leave: vi.fn(), openSettings: vi.fn(), openChat: vi.fn() };
+ const update = { check: vi.fn(), start: vi.fn() };
+ const handlers = { openSettings: vi.fn(), setEnabled: vi.fn(), retryHelper: vi.fn(), quit: vi.fn(), room, update };
+ 
+@@ -124,12 +124,16 @@ describe('AppTray', () => {
+     const items = roomMenu();
+     expect(items[0]).toMatchObject({ label: 'PING-7KQ4M-2HXTR · 3 people', enabled: false });
+     expect(items.filter((i) => i.type !== 'separator').map((i) => i.label)).toEqual([
+-      'PING-7KQ4M-2HXTR · 3 people', 'Copy code', 'Mute room', 'Leave room', 'Room settings…',
++      'PING-7KQ4M-2HXTR · 3 people', 'Copy code', 'Open chat', 'Mute room', 'Leave room', 'Room settings…',
+     ]);
+     const mute = items.find((i) => i.label === 'Mute room')!;
+     expect(mute).toMatchObject({ type: 'checkbox', checked: true });
+     mute.click!({ checked: false });
+     expect(room.setMuted).toHaveBeenCalledWith(false);
++    items.find((i) => i.label === 'Open chat')?.click?.({});
++    expect(room.openChat).toHaveBeenCalled();
++    tray.set('off', false);
++    expect(roomMenu().find((i) => i.label === 'Open chat')?.enabled).toBe(false);
+     tray.setRoom({ code: 'PING-7KQ4M-2HXTR', count: 1, muted: false });
+     expect(roomMenu()[0].label).toBe('PING-7KQ4M-2HXTR · 1 person');
+   });
+diff --git a/tests/renderer/chatHistory.test.ts b/tests/renderer/chatHistory.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..862c84e07b2c07637d2eb6384b9a4415c91dba96
+--- /dev/null
++++ b/tests/renderer/chatHistory.test.ts
+@@ -0,0 +1,16 @@
++import { describe, expect, it } from 'vitest';
++import { chatTimestamp } from '../../src/renderer/chat/chatHistory';
++
++describe('chatTimestamp', () => {
++  it('uses local 24-hour time with padded minutes in both languages', () => {
++    const ts = new Date(2026, 9, 14, 21, 9).getTime();
++    expect(chatTimestamp(ts, 'en')).toBe('[21:09]');
++    expect(chatTimestamp(ts, 'zh-CN')).toBe('[21:09]');
++  });
++
++  it('shows midnight as 00 instead of 24', () => {
++    const ts = new Date(2026, 9, 14, 0, 5).getTime();
++    expect(chatTimestamp(ts, 'en')).toBe('[00:05]');
++    expect(chatTimestamp(ts, 'zh-CN')).toBe('[00:05]');
++  });
++});
+diff --git a/tests/renderer/chatLogic.test.ts b/tests/renderer/chatLogic.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..657b92f1eb8253eae0e7b6bf27f6a6396dde9fb5
+--- /dev/null
++++ b/tests/renderer/chatLogic.test.ts
+@@ -0,0 +1,31 @@
++import { describe, expect, it } from 'vitest';
++import { chatKeyAction, type ChatKey } from '../../src/renderer/chat/chatLogic';
++
++const key = (key: string, patch: Partial<ChatKey> = {}): ChatKey => ({
++  key, keyCode: 0, isComposing: false, repeat: false,
++  ctrlKey: false, altKey: false, metaKey: false, shiftKey: false, ...patch,
++});
++
++describe('chatKeyAction', () => {
++  it('sends with Enter and closes with Escape', () => {
++    expect(chatKeyAction(key('Enter'))).toBe('send');
++    expect(chatKeyAction(key('Escape'))).toBe('close');
++    expect(chatKeyAction(key('a'))).toBe('ignore');
++  });
++
++  it('lets the input method finish or cancel composing without sending or closing', () => {
++    expect(chatKeyAction(key('Enter', { isComposing: true }))).toBe('ignore');
++    expect(chatKeyAction(key('Escape', { isComposing: true }))).toBe('ignore');
++    expect(chatKeyAction(key('Enter', { keyCode: 229 }))).toBe('ignore');
++  });
++
++  it('ignores a held Enter so one key press cannot send repeatedly', () => {
++    expect(chatKeyAction(key('Enter', { repeat: true }))).toBe('ignore');
++  });
++
++  it('does not send when the chat-opening shortcut or another modifier is held', () => {
++    for (const modifier of ['ctrlKey', 'altKey', 'metaKey', 'shiftKey'] as const) {
++      expect(chatKeyAction(key('Enter', { [modifier]: true }))).toBe('ignore');
++    }
++  });
++});
+diff --git a/tests/shared/roomProtocol.test.ts b/tests/shared/roomProtocol.test.ts
+index 7d753adb99d088732f2228ae59d17ab7e2917949..4020f6a7a22213d0ab5528365d4c3eec00f0a4a7 100644
+--- a/tests/shared/roomProtocol.test.ts
++++ b/tests/shared/roomProtocol.test.ts
+@@ -1,18 +1,20 @@
+ import { describe, expect, it } from 'vitest';
+ import { isTagColor, TAG_COLORS } from '../../src/shared/roomColors';
++import { CHAT_MAX_ENCODED_BYTES, CHAT_MAX_LENGTH, validateChatText } from '../../src/shared/chat';
+ import {
+   clampNameInput, decodeMessage, encodeMessage, isOlderThan, sanitizeName, validateMessage, type ChunkMsg, type EmoteMsg,
+-  type PingMsg, type PresenceMsg, type RoomMessage, type WantMsg,
++  type ChatMsg, type PingMsg, type PresenceMsg, type RoomMessage, type WantMsg,
+ } from '../../src/shared/roomProtocol';
+ 
+ const base = { peer: '0123456789abcdef', seq: 4, ts: 1_780_000_000_000 };
+ const presence: PresenceMsg = { ...base, t: 'presence', proto: 1, app: '0.3.0', name: 'Alex', color: 3, status: 'on', em: [] };
+ const ping: PingMsg = { ...base, t: 'ping', ping: 'danger', d: 2, x: 0.25, y: 1 };
+ const emote: EmoteMsg = { ...base, t: 'emote', e: 'gg', d: 2, x: 0.25, y: 1 };
++const chat: ChatMsg = { ...base, t: 'chat', text: 'Hello, room! 一起玩吧 🎮' };
+ const CUSTOM_REF = `c:${'0123456789abcdef'.repeat(2)}`;
+ 
+ describe('encode / decode', () => {
+-  it.each<RoomMessage>([presence, ping, { ...base, t: 'bye' }])('round-trips $t', (m) => {
++  it.each<RoomMessage>([presence, ping, chat, { ...base, t: 'bye' }])('round-trips $t', (m) => {
+     expect(decodeMessage(encodeMessage(m))).toEqual(m);
+   });
+ 
+@@ -29,6 +31,42 @@ describe('encode / decode', () => {
+   });
+ });
+ 
++describe('chat text', () => {
++  it('trims and makes pasted lines single-line without letting controls reorder adjacent text', () => {
++    expect(validateChatText('  Hello\r\nworld\t!\u202e\u0000\u200b  ')).toEqual({ ok: true, text: 'Hello world !' });
++    expect(validateMessage({ ...chat, text: '\u202e Hi \u2066there\u2069 ' })).toEqual({ ...chat, text: 'Hi there' });
++  });
++
++  it('keeps markup as plain data and ignores spoofed identity and display fields', () => {
++    const text = '<img src=x onerror="alert(1)"> & \\ /';
++    expect(validateMessage({ ...chat, text, name: 'Impostor', color: 7, self: true, d: 99 })).toEqual({ ...chat, text });
++    expect(decodeMessage(encodeMessage({ ...chat, text }))).toEqual({ ...chat, text });
++  });
++
++  it('keeps emoji joiners while rejecting messages made entirely of invisible characters', () => {
++    expect(validateChatText('👩‍💻')).toEqual({ ok: true, text: '👩‍💻' });
++    for (const raw of ['', ' \t\n ', '\u202e\u0000\u200b', '\u200c\u200d\ufe0f', null, 1, {}, []]) {
++      expect(validateChatText(raw)).toEqual({ ok: false, error: 'empty' });
++      expect(validateMessage({ ...chat, text: raw })).toBeNull();
++    }
++  });
++
++  it('caps code points rather than UTF-16 units, with an additional encoded-byte budget', () => {
++    expect(validateChatText('x'.repeat(CHAT_MAX_LENGTH))).toEqual({ ok: true, text: 'x'.repeat(CHAT_MAX_LENGTH) });
++    expect(validateChatText('x'.repeat(CHAT_MAX_LENGTH + 1))).toEqual({ ok: false, error: 'tooLong' });
++    expect(validateChatText('中'.repeat(CHAT_MAX_LENGTH))).toEqual({ ok: true, text: '中'.repeat(CHAT_MAX_LENGTH) });
++    const edge = '🎮'.repeat(199) + 'ab';
++    expect(new TextEncoder().encode(JSON.stringify(edge))).toHaveLength(CHAT_MAX_ENCODED_BYTES);
++    expect(validateChatText(edge)).toEqual({ ok: true, text: edge });
++    expect(validateChatText(edge + 'c')).toEqual({ ok: false, error: 'tooLong' });
++    expect(validateMessage({ ...chat, text: '🎮'.repeat(200) })).toBeNull();
++    for (const text of ['"'.repeat(256), '\\'.repeat(256)]) {
++      expect(validateChatText(text)).toEqual({ ok: true, text });
++      expect(decodeMessage(encodeMessage({ ...chat, text }))).toEqual({ ...chat, text });
++    }
++  });
++});
++
+ describe('validateMessage', () => {
+   it.each([
+     ['unknown type', { ...presence, t: 'hello' }],

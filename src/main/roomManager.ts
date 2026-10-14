@@ -1,10 +1,11 @@
 import { EventEmitter } from 'node:events';
+import { CHAT_HISTORY_LIMIT, validateChatText, type ChatEntry, type ChatSendResult } from '../shared/chat';
 import type { EmoteRef } from '../shared/emotes';
 import type { PingId } from '../shared/pings';
 import type { JoinResult, MemberPath, RoomMember, RoomStateCore } from '../shared/room';
 import { formatRoomCode, makeRoomCode, parseRoomCode } from '../shared/roomCode';
 import {
-  decodeMessage, encodeMessage, isOlderThan, PROTOCOL_VERSION, type MemberStatus, type PresenceMsg, type RoomMessage,
+  decodeMessage, encodeMessage, isOlderThan, PROTOCOL_VERSION, sanitizeName, type MemberStatus, type PresenceMsg, type RoomMessage,
 } from '../shared/roomProtocol';
 import { RateLimiter } from './rateLimiter';
 import { ReplayGuard } from './replayGuard';
@@ -27,6 +28,9 @@ export const RELAY_PING_RATE = 5;
 export const RELAY_PING_BURST = 10;
 /** want/chunk messages accepted per member: a still's chunks arrive as a burst, so this bucket is wider than the ping one. */
 const TRANSFER_RATE = 60;
+/** Chat is paced independently of wheel gestures, for both LAN and relay members. */
+const CHAT_RATE = 1;
+const CHAT_BURST = 3;
 /** Presence asked for on a shared transport (a change, a new link, a new member): at most this often. */
 const SHARED_PRESENCE_MS = 1000;
 /** The first app version that shows emotes. */
@@ -99,7 +103,8 @@ const toHex = (b: Uint8Array): string => [...b].map((v) => v.toString(16).padSta
  * The room: who is in it, what we send, and what we let through. Talks to the network only through transports,
  * which carry sealed packets. Events: 'state' (RoomStateCore), 'remotePing' (RemotePing), 'remoteEmote' (RemoteEmote), 'toast' (RoomToast),
  * 'saveCode' (canonical code | null: what "rejoin last room" should remember), 'emotes' (peer, announced hashes),
- * 'want' (WantMsg), 'chunk' (ChunkMsg) and 'memberGone' (peer), which EmoteTransfer answers.
+ * 'want' (WantMsg), 'chunk' (ChunkMsg) and 'memberGone' (peer), which EmoteTransfer answers,
+ * plus 'chat' (ChatEntry) and 'chatReset' (the room's session history was cleared).
  */
 export class RoomManager extends EventEmitter {
   /** Our peer ID: random per join, since a peer that said bye stays "gone" to the others for their whole session. */
@@ -118,6 +123,9 @@ export class RoomManager extends EventEmitter {
   private readonly limiter: RateLimiter;
   /** Emote stills (want/chunk) per member: their own, wider bucket, so a flood of wants still meets a wall. */
   private readonly transferLimiter: RateLimiter;
+  private readonly chatLimiter: RateLimiter;
+  private readonly chatSendLimiter: RateLimiter;
+  private chatEntries: ChatEntry[] = [];
   private paused = false;
   private roomMuted = false;
   private aloneSince: number | null = null;
@@ -144,6 +152,8 @@ export class RoomManager extends EventEmitter {
     this.guard = new ReplayGuard(deps.now);
     this.limiter = new RateLimiter(deps.now);
     this.transferLimiter = new RateLimiter(deps.now);
+    this.chatLimiter = new RateLimiter(deps.now);
+    this.chatSendLimiter = new RateLimiter(deps.now);
     this.relayCap = new RateLimiter(deps.now);
     for (const t of deps.transports) {
       t.on('packet', (peer: PeerKey, packet: Uint8Array) => this.onPacket(t, peer, packet));
@@ -181,17 +191,52 @@ export class RoomManager extends EventEmitter {
   }
 
   sendPing(ping: PingId, shared: { d: number; x: number; y: number }): void {
-    this.sendShared({ t: 'ping', ping, ...shared });
+    const ts = this.deps.now();
+    const profile = this.deps.profile();
+    const seq = this.sendShared({ t: 'ping', ping, ...shared, ts });
+    if (seq === undefined) return;
+    this.appendChat({
+      kind: 'ping', id: `${this.self}:${seq}`, peer: this.self, name: sanitizeName(profile.name), color: profile.color,
+      ping, ts, self: true,
+    });
   }
 
   sendEmote(e: EmoteRef, shared: { d: number; x: number; y: number }): void {
     this.sendShared({ t: 'emote', e, ...shared });
   }
 
-  /** A ping or an emote: each member gets it over its own route; shared transports get one send, within the relay cap. */
-  private sendShared(body: Record<string, unknown>): void {
+  /** Current-session messages only; callers cannot mutate the history or its entries. */
+  chatHistory(): ChatEntry[] {
+    return this.chatEntries.map((entry) => ({ ...entry }));
+  }
+
+  sendChat(raw: string): ChatSendResult {
+    if (this.phase === 'idle' || !this.keys) return { ok: false, error: 'notInRoom' };
+    if (this.paused) return { ok: false, error: 'paused' };
+    const text = validateChatText(raw);
+    if (!text.ok) return text;
+    if (!this.chatSendLimiter.allow('self', CHAT_RATE, CHAT_BURST)) return { ok: false, error: 'rateLimited' };
+    const ts = this.deps.now();
+    const profile = this.deps.profile();
+    let seq: number | undefined;
+    try {
+      seq = this.sendShared({ t: 'chat', text: text.text, ts }, false);
+    } catch {
+      return { ok: false, error: 'failed' };
+    }
+    if (seq === undefined) return { ok: false, error: 'failed' };
+    this.appendChat({
+      kind: 'message', id: `${this.self}:${seq}`, peer: this.self, name: sanitizeName(profile.name), color: profile.color,
+      text: text.text, ts, self: true,
+    });
+    return { ok: true };
+  }
+
+  /** Each member gets it over its own route; shared transports get one send, with a separate cap for chat. */
+  private sendShared(body: Record<string, unknown>, useRelayPingCap = true): number | undefined {
     if (this.phase === 'idle' || !this.keys || this.paused) return;
     const packet = this.seal(body);
+    const seq = this.seq;
     const sharedRoutes = new Set<Transport>();
     for (const m of this.members.values()) {
       const route = this.route(m);
@@ -199,7 +244,10 @@ export class RoomManager extends EventEmitter {
       if (route.transport.shared) sharedRoutes.add(route.transport);
       else route.transport.sendTo(route.key, packet);
     }
-    for (const t of sharedRoutes) if (this.relayCap.allow(t.kind, RELAY_PING_RATE, RELAY_PING_BURST)) t.broadcast(packet);
+    for (const t of sharedRoutes) {
+      if (!useRelayPingCap || this.relayCap.allow(t.kind, RELAY_PING_RATE, RELAY_PING_BURST)) t.broadcast(packet);
+    }
+    return seq;
   }
 
   /** How a member is reached right now, for emote transfers: cheap LAN unicast, one-cast-reaches-all relays, or neither. */
@@ -393,6 +441,10 @@ export class RoomManager extends EventEmitter {
     this.staleStrikes.clear();
     this.lastPresence = {};
     this.aloneSince = null;
+    this.chatEntries = [];
+    this.chatLimiter.clear();
+    this.chatSendLimiter.clear();
+    this.emit('chatReset');
     this.emitState();
   }
 
@@ -439,6 +491,15 @@ export class RoomManager extends EventEmitter {
       this.emit(msg.t, msg);
       return;
     }
+    if (msg.t === 'chat') {
+      if (this.paused || this.roomMuted || m.muted || m.needsUpdate) return;
+      if (!this.chatLimiter.allow(m.peer, CHAT_RATE, CHAT_BURST)) return;
+      this.appendChat({
+        kind: 'message', id: `${m.peer}:${msg.seq}`, peer: m.peer, name: m.name, color: m.color,
+        text: msg.text, ts: msg.ts, self: false,
+      });
+      return;
+    }
     // Pings and emotes pass the same gates and share one budget per member.
     if (this.paused || this.roomMuted || m.muted || m.needsUpdate) return;
     if (!this.limiter.allow(m.peer, this.deps.profile().limit)) return;
@@ -446,8 +507,13 @@ export class RoomManager extends EventEmitter {
     if (!target) return;
     const [x, y] = [msg.x * target.width, msg.y * target.height];
     const tag = { name: m.name, color: m.color };
-    if (msg.t === 'ping') this.emit('remotePing', { displayId: target.displayId, x, y, id: msg.ping, tag } satisfies RemotePing);
-    else this.emit('remoteEmote', { displayId: target.displayId, x, y, ref: msg.e, peer: m.peer, tag } satisfies RemoteEmote);
+    if (msg.t === 'ping') {
+      this.emit('remotePing', { displayId: target.displayId, x, y, id: msg.ping, tag } satisfies RemotePing);
+      this.appendChat({
+        kind: 'ping', id: `${m.peer}:${msg.seq}`, peer: m.peer, name: m.name, color: m.color,
+        ping: msg.ping, ts: msg.ts, self: false,
+      });
+    } else this.emit('remoteEmote', { displayId: target.displayId, x, y, ref: msg.e, peer: m.peer, tag } satisfies RemoteEmote);
   }
 
   private onPresence(t: Transport, key: PeerKey, msg: PresenceMsg): void {
@@ -512,6 +578,7 @@ export class RoomManager extends EventEmitter {
     this.members.delete(m.peer);
     this.limiter.forget(m.peer);
     this.transferLimiter.forget(m.peer);
+    this.chatLimiter.forget(m.peer);
     for (const p of Object.values(m.paths)) this.answered.delete(p.key);
     if (this.members.size === 0 && this.phase !== 'idle') this.aloneSince = this.deps.now();
     this.emit('memberGone', m.peer);
@@ -609,5 +676,11 @@ export class RoomManager extends EventEmitter {
     if (json === this.lastState) return;
     this.lastState = json;
     this.emit('state', s);
+  }
+
+  private appendChat(entry: ChatEntry): void {
+    this.chatEntries.push({ ...entry });
+    if (this.chatEntries.length > CHAT_HISTORY_LIMIT) this.chatEntries.shift();
+    this.emit('chat', { ...entry });
   }
 }

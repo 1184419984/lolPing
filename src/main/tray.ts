@@ -29,6 +29,7 @@ export interface TrayHandlers {
     leave(): void;
     /** Opens settings at the Room section. */
     openSettings(): void;
+    openChat(): void;
   };
 }
 
@@ -197,6 +198,7 @@ export class AppTray {
       { label: t.trayRoomLabel(this.room.code, this.room.count), enabled: false },
       { type: 'separator' },
       { label: t.trayRoomCopy, click: () => r.copyCode() },
+      { label: t.chatOpen, enabled: this.enabled, click: () => r.openChat() },
       { label: t.trayRoomMute, type: 'checkbox', checked: this.room.muted, click: (item) => r.setMuted(item.checked) },
       { label: t.trayRoomLeave, click: () => r.leave() },
       { type: 'separator' },

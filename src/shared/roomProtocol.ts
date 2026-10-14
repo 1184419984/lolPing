@@ -1,6 +1,7 @@
 import { ANNOUNCED_MAX, HASH_RE, isEmoteRefShape, type EmoteRef } from './emotes';
 import { isPingId, type PingId } from './pings';
 import { isTagColor } from './roomColors';
+import { validateChatText } from './chat';
 
 /** Bumped when room messages change incompatibly. Peers on another version are shown as "needs update". */
 export const PROTOCOL_VERSION = 1;
@@ -65,7 +66,12 @@ export interface ChunkMsg extends Base {
 export interface ByeMsg extends Base {
   t: 'bye';
 }
-export type RoomMessage = PresenceMsg | PingMsg | EmoteMsg | WantMsg | ChunkMsg | ByeMsg;
+/** An additive protocol-v1 message: older apps drop unknown types and keep reading presence and pings. */
+export interface ChatMsg extends Base {
+  t: 'chat';
+  text: string;
+}
+export type RoomMessage = PresenceMsg | PingMsg | EmoteMsg | WantMsg | ChunkMsg | ByeMsg | ChatMsg;
 
 // C0/C1 controls, zero-width characters, bidi marks, embeddings and isolates, BOM, line/paragraph separators,
 // soft hyphen, combining grapheme joiner, Arabic letter mark, Mongolian vowel separator and the Hangul fillers
@@ -147,6 +153,10 @@ export function validateMessage(raw: unknown): RoomMessage | null {
     }
     case 'bye':
       return { t, ...base };
+    case 'chat': {
+      const text = validateChatText(raw.text);
+      return text.ok ? { t, ...base, text: text.text } : null;
+    }
     default:
       return null;
   }

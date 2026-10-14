@@ -6,13 +6,14 @@ import { join } from 'node:path';
 import { resolveLang, strings, type Strings } from '../shared/i18n';
 import { SETTINGS_CH, type About, type AppStatus } from '../shared/ipc';
 import { announcedEmoteHashes } from '../shared/emotes';
-import { hotkeyLabel } from '../shared/keys';
+import { hotkeyLabel, MOD } from '../shared/keys';
 import { configCommand, type HelperStatus } from '../shared/protocol';
 import type { RoomState } from '../shared/room';
 import { formatRoomCode, parseRoomCode } from '../shared/roomCode';
 import { overlaySettings, type Settings } from '../shared/settings';
 import { updateErrorText, type UpdateState } from '../shared/update';
 import { registerAppScheme, serveAppScheme } from './appProtocol';
+import { ChatWindow } from './chatWindow';
 import { resolveTarget, toShared } from './displayNumbers';
 import { EmoteCache } from './emoteCache';
 import { EmoteLibrary, resolveEmoteArt } from './emoteLibrary';
@@ -94,6 +95,7 @@ function start(): void {
   let enabled = settings.enabledOnStart;
   let quitting = false; // read by pushStatus: once true, the tray and overlays are gone
   let capturing = false; // the settings page is listening for a key, so the helper must stay suspended
+  let chatEditing = false;
 
   const overlays = new OverlayManager(
     overlaySettings(settings),
@@ -158,6 +160,23 @@ function start(): void {
     },
     announceEmotes: () => announcedEmoteHashes(settings.emoteWheel, settings.clickEmoteId),
   });
+  const syncInputSuspend = (): void => bridge.send({ type: 'suspend', on: capturing || chatEditing });
+  const chat = new ChatWindow({
+    state: () => ({
+      messages: room.chatHistory(), roomCode: room.state().code,
+      lang: resolveLang(settings.language, app.getLocale()), platform: PLATFORM, enabled,
+    }),
+    send: (message) => room.sendChat(message),
+    onComposing: (on) => {
+      chatEditing = on;
+      if (on) overlays.cancelWheel();
+      syncInputSuspend();
+    },
+    shortcutAllowed: () => !capturing
+      && (settings.toggleHotkey.vk !== 0x0d || settings.toggleHotkey.mods !== (MOD.ctrl | MOD.alt)),
+  });
+  room.on('chat', () => chat.notify());
+  room.on('chatReset', () => chat.reset());
   // Custom emote stills travel both ways: this side asks for friends' hashes and answers wants for our own.
   const transfer = new EmoteTransfer({
     now: Date.now,
@@ -253,6 +272,7 @@ function start(): void {
         setMuted: (on) => store.update({ roomMuted: on }),
         leave: () => room.leave(),
         openSettings: () => openSettingsWindow('room'),
+        openChat: () => chat.open(),
       },
       // The tray has no card to show a result on, so the handlers toast it. Nothing to toast on once the overlays are gone.
       update: updater
@@ -283,6 +303,7 @@ function start(): void {
     const s = roomState();
     tray.setRoom({ code: s.code, count: s.members.length, muted: settings.roomMuted });
     settingsWindow()?.webContents.send(SETTINGS_CH.roomChanged, s);
+    chat.refresh();
   }
   const syncRoomFlags = (): void => room.setStatusFlags({ paused: !enabled, roomMuted: settings.roomMuted });
   room.on('state', pushRoom);
@@ -316,6 +337,7 @@ function start(): void {
     if (quitting) return;
     tray.set(trayMode(), enabled);
     settingsWindow()?.webContents.send(SETTINGS_CH.statusChanged, status());
+    chat.refresh();
   }
   const about = (): About => ({
     version: app.getVersion(),
@@ -341,7 +363,7 @@ function start(): void {
     if (ev.type === 'toggled') setEnabled(ev.enabled);
     else if (ev.type === 'ready') {
       // A restarted helper starts unsuspended: re-apply an active key capture.
-      if (capturing) bridge.send({ type: 'suspend', on: true });
+      if (capturing || chatEditing) syncInputSuspend();
     } else if (ev.type === 'error') console.warn('[helper]', ev.code ?? '', ev.message);
     else overlays.handle(ev);
   });
@@ -365,6 +387,7 @@ function start(): void {
     bridge.send(configCommand(s, enabled));
     overlays.updateSettings(overlaySettings(s));
     settingsWindow()?.webContents.send(SETTINGS_CH.changed, s);
+    chat.refresh();
     if (s.language !== previous.language) tray.setText(text());
     if (s.displayName !== previous.displayName || s.tagColor !== previous.tagColor) room.profileChanged();
     if (s.autoUpdateCheck !== previous.autoUpdateCheck) updater?.setAutoCheck(s.autoUpdateCheck);
@@ -391,9 +414,11 @@ function start(): void {
     previewEmote: (ref) => overlays.previewEmote(ref),
     about,
     retryHelper: startHelper,
+    openChat: () => chat.open(),
     setCapturing: (on) => {
       capturing = on;
-      bridge.send({ type: 'suspend', on });
+      syncInputSuspend();
+      chat.refresh();
     },
     openAccessibility: () => {
       systemPreferences.isTrustedAccessibilityClient(true); // adds lolPing to the list and shows the system prompt
@@ -420,7 +445,8 @@ function start(): void {
   onSettingsWindowGone(() => {
     if (!capturing) return;
     capturing = false;
-    bridge.send({ type: 'suspend', on: false });
+    syncInputSuspend();
+    chat.refresh();
   });
 
   bridge.send(configCommand(settings, enabled));
@@ -449,6 +475,7 @@ function start(): void {
     quitting = true;
     event.preventDefault();
     updater?.stop(); // aborts a download and drops a check in flight; an install that is quitting the app is left alone
+    chat.destroy();
     room.quit(); // says bye, so the others see "left" instead of waiting for a timeout
     transfer.stop();
     stopWaitingForAccess();

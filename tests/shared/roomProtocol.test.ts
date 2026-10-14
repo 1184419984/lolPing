@@ -1,18 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { isTagColor, TAG_COLORS } from '../../src/shared/roomColors';
+import { CHAT_MAX_ENCODED_BYTES, CHAT_MAX_LENGTH, validateChatText } from '../../src/shared/chat';
 import {
   clampNameInput, decodeMessage, encodeMessage, isOlderThan, sanitizeName, validateMessage, type ChunkMsg, type EmoteMsg,
-  type PingMsg, type PresenceMsg, type RoomMessage, type WantMsg,
+  type ChatMsg, type PingMsg, type PresenceMsg, type RoomMessage, type WantMsg,
 } from '../../src/shared/roomProtocol';
 
 const base = { peer: '0123456789abcdef', seq: 4, ts: 1_780_000_000_000 };
 const presence: PresenceMsg = { ...base, t: 'presence', proto: 1, app: '0.3.0', name: 'Alex', color: 3, status: 'on', em: [] };
 const ping: PingMsg = { ...base, t: 'ping', ping: 'danger', d: 2, x: 0.25, y: 1 };
 const emote: EmoteMsg = { ...base, t: 'emote', e: 'gg', d: 2, x: 0.25, y: 1 };
+const chat: ChatMsg = { ...base, t: 'chat', text: 'Hello, room! 一起玩吧 🎮' };
 const CUSTOM_REF = `c:${'0123456789abcdef'.repeat(2)}`;
 
 describe('encode / decode', () => {
-  it.each<RoomMessage>([presence, ping, { ...base, t: 'bye' }])('round-trips $t', (m) => {
+  it.each<RoomMessage>([presence, ping, chat, { ...base, t: 'bye' }])('round-trips $t', (m) => {
     expect(decodeMessage(encodeMessage(m))).toEqual(m);
   });
 
@@ -26,6 +28,42 @@ describe('encode / decode', () => {
 
   it('rejects bytes that are not JSON', () => {
     expect(decodeMessage(new TextEncoder().encode('{nope'))).toBeNull();
+  });
+});
+
+describe('chat text', () => {
+  it('trims and makes pasted lines single-line without letting controls reorder adjacent text', () => {
+    expect(validateChatText('  Hello\r\nworld\t!\u202e\u0000\u200b  ')).toEqual({ ok: true, text: 'Hello world !' });
+    expect(validateMessage({ ...chat, text: '\u202e Hi \u2066there\u2069 ' })).toEqual({ ...chat, text: 'Hi there' });
+  });
+
+  it('keeps markup as plain data and ignores spoofed identity and display fields', () => {
+    const text = '<img src=x onerror="alert(1)"> & \\ /';
+    expect(validateMessage({ ...chat, text, name: 'Impostor', color: 7, self: true, d: 99 })).toEqual({ ...chat, text });
+    expect(decodeMessage(encodeMessage({ ...chat, text }))).toEqual({ ...chat, text });
+  });
+
+  it('keeps emoji joiners while rejecting messages made entirely of invisible characters', () => {
+    expect(validateChatText('👩‍💻')).toEqual({ ok: true, text: '👩‍💻' });
+    for (const raw of ['', ' \t\n ', '\u202e\u0000\u200b', '\u200c\u200d\ufe0f', null, 1, {}, []]) {
+      expect(validateChatText(raw)).toEqual({ ok: false, error: 'empty' });
+      expect(validateMessage({ ...chat, text: raw })).toBeNull();
+    }
+  });
+
+  it('caps code points rather than UTF-16 units, with an additional encoded-byte budget', () => {
+    expect(validateChatText('x'.repeat(CHAT_MAX_LENGTH))).toEqual({ ok: true, text: 'x'.repeat(CHAT_MAX_LENGTH) });
+    expect(validateChatText('x'.repeat(CHAT_MAX_LENGTH + 1))).toEqual({ ok: false, error: 'tooLong' });
+    expect(validateChatText('中'.repeat(CHAT_MAX_LENGTH))).toEqual({ ok: true, text: '中'.repeat(CHAT_MAX_LENGTH) });
+    const edge = '🎮'.repeat(199) + 'ab';
+    expect(new TextEncoder().encode(JSON.stringify(edge))).toHaveLength(CHAT_MAX_ENCODED_BYTES);
+    expect(validateChatText(edge)).toEqual({ ok: true, text: edge });
+    expect(validateChatText(edge + 'c')).toEqual({ ok: false, error: 'tooLong' });
+    expect(validateMessage({ ...chat, text: '🎮'.repeat(200) })).toBeNull();
+    for (const text of ['"'.repeat(256), '\\'.repeat(256)]) {
+      expect(validateChatText(text)).toEqual({ ok: true, text });
+      expect(decodeMessage(encodeMessage({ ...chat, text }))).toEqual({ ...chat, text });
+    }
   });
 });
 

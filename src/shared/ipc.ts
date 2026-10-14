@@ -1,4 +1,6 @@
 import type { EmoteArt, EmoteFile, EmoteRef, ImportResult } from './emotes';
+import type { ChatEntry, ChatSendResult } from './chat';
+import type { Lang } from './i18n';
 import type { PingId } from './pings';
 import type { Platform } from './platform';
 import type { HelperStatus, WheelKind } from './protocol';
@@ -57,6 +59,27 @@ export interface AppStatus {
   staleAccess?: boolean;
 }
 
+/** Main-process room history and the desktop chat window's input state. */
+export interface ChatState {
+  messages: ChatEntry[];
+  composing: boolean;
+  roomCode: string | null;
+  lang: Lang;
+  platform: Platform;
+  enabled: boolean;
+  shortcutAvailable: boolean;
+}
+
+/** window.chatApi: only room text and closing the input window. */
+export interface ChatApi {
+  getState(): Promise<ChatState>;
+  onState(cb: (state: ChatState) => void): () => void;
+  send(text: string): Promise<ChatSendResult>;
+  close(): Promise<void>;
+  /** Fits the desktop window to the visible chat lines and input. */
+  resize(height: number): Promise<void>;
+}
+
 export interface About {
   version: string;
   problems: string[];
@@ -104,6 +127,8 @@ export interface SettingsApi {
   copyRoomCode(): Promise<void>;
   /** Reconnects to every relay now (the Room page's Retry). */
   retryInternet(): Promise<void>;
+  /** Opens the desktop room chat input. */
+  openChat(): Promise<void>;
   /** The main process asks to scroll to a section (e.g. tray → Room settings…). */
   onShowSection(cb: (id: string) => void): () => void;
   /** Where the update checker is, or null when this build has none (a development build): then the page shows no update controls. */

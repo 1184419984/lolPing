@@ -26,6 +26,7 @@ export interface SettingsIpcDeps {
   about(): About;
   retryHelper(): void;
   setCapturing(on: boolean): void;
+  openChat(): void;
   openAccessibility(): void;
   /** Strings in the app's current language. */
   text(): Strings;
@@ -131,6 +132,7 @@ export function registerSettingsIpc(d: SettingsIpcDeps): void {
   ipcMain.handle(SETTINGS_CH.roomClipboard, () => d.room.clipboardCode());
   ipcMain.handle(SETTINGS_CH.roomCopy, () => d.room.copyCode());
   ipcMain.handle(SETTINGS_CH.roomRetryInternet, () => d.room.retryInternet());
+  ipcMain.handle(SETTINGS_CH.roomOpenChat, () => d.openChat());
 
   ipcMain.handle(SETTINGS_CH.updateGet, (): UpdateState | null => d.update?.state() ?? null);
   ipcMain.handle(SETTINGS_CH.updateCheck, async () => {

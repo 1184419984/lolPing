@@ -2,9 +2,10 @@ import { randomBytes } from 'node:crypto';
 import { createSocket } from 'node:dgram';
 import { afterEach, describe, expect, it } from 'vitest';
 import { LanTransport } from '../../src/main/lanTransport';
-import { deriveRoomKeys } from '../../src/main/roomCrypto';
+import { deriveRoomKeys, MAX_PACKET, open as openPacket } from '../../src/main/roomCrypto';
 import { RoomManager, type RemotePing, type RoomToast } from '../../src/main/roomManager';
 import { makeRoomCode } from '../../src/shared/roomCode';
+import { decodeMessage } from '../../src/shared/roomProtocol';
 
 // Two rooms on loopback. Loopback carries no broadcast, so each transport is seeded with the other's port.
 const A_PORT = 47_501;
@@ -68,6 +69,50 @@ describe('two rooms over loopback UDP', () => {
     a.room.leave();
     await until(() => b.toasts.some((t) => t.kind === 'left'));
     expect(b.room.state().members).toHaveLength(1);
+  });
+
+  it('exchanges encrypted Chinese and emoji chat both ways while pings keep working', async () => {
+    const a = peer(A_PORT, B_PORT, '小明');
+    const b = peer(B_PORT, A_PORT, '队友');
+    open = [a, b];
+    const packets: Uint8Array[] = [];
+    b.lan.on('packet', (_peer: string, packet: Uint8Array) => packets.push(packet));
+    await Promise.all([a.room.join(CODE), b.room.join(CODE)]);
+    await until(() => a.room.state().members.length === 2 && b.room.state().members.length === 2);
+
+    expect(a.room.sendChat('  一起推线吧 🎮👩‍💻  ')).toEqual({ ok: true });
+    await until(() => b.room.chatHistory().length === 1);
+    expect(b.room.chatHistory()[0]).toEqual({ ...a.room.chatHistory()[0], self: false });
+    expect(b.room.chatHistory()[0]).toMatchObject({ peer: a.room.self, name: '小明', text: '一起推线吧 🎮👩‍💻' });
+
+    expect(b.room.sendChat('收到，我来了！😀')).toEqual({ ok: true });
+    await until(() => a.room.chatHistory().length === 2);
+    expect(a.room.chatHistory()[1]).toEqual({ ...b.room.chatHistory()[1], self: false });
+    expect(a.room.chatHistory()[1]).toMatchObject({ peer: b.room.self, name: '队友', text: '收到，我来了！😀' });
+
+    const keys = await deriveRoomKeys(CODE);
+    const packet = packets.find((candidate) => {
+      const plain = openPacket(keys.msgKey, candidate);
+      return plain !== null && decodeMessage(plain)?.t === 'chat';
+    });
+    expect(packet).toBeDefined();
+    if (packet) {
+      expect(packet.length).toBeLessThanOrEqual(MAX_PACKET);
+      expect(openPacket(Buffer.alloc(32, 2), packet)).toBeNull();
+      expect(Buffer.from(packet).includes(Buffer.from('一起推线吧'))).toBe(false);
+    }
+
+    a.room.sendPing('push', { d: 1, x: 0.5, y: 0.5 });
+    b.room.sendPing('omw', { d: 1, x: 0.25, y: 1 });
+    await until(() => b.pings.length === 1 && a.pings.length === 1);
+    expect(b.pings[0]).toEqual({ displayId: 1, x: 500, y: 250, id: 'push', tag: { name: '小明', color: 1 } });
+    expect(a.pings[0]).toEqual({ displayId: 1, x: 250, y: 500, id: 'omw', tag: { name: '队友', color: 1 } });
+    expect(a.room.chatHistory()).toHaveLength(4);
+    expect(b.room.chatHistory()).toHaveLength(4);
+    expect(a.room.chatHistory().filter((entry) => entry.kind === 'ping')).toEqual(expect.arrayContaining([
+      expect.objectContaining({ peer: a.room.self, name: '小明', ping: 'push', self: true }),
+      expect.objectContaining({ peer: b.room.self, name: '队友', ping: 'omw', self: false }),
+    ]));
   });
 
   it('see a member who left and joined the same room again', async () => {
