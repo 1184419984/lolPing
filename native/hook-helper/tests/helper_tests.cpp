@@ -188,14 +188,31 @@ static void test_escape_cancels_wheel() {
   CHECK(r.swallow && r.emits.empty());
 }
 
-static void test_trigger_released_during_wheel_cancels() {
+// As in League, once the wheel is open only the mouse button decides: letting go of the trigger first
+// keeps the wheel (and a trackpad's three-finger drag, whose button-up comes late, still pings).
+static void test_trigger_released_during_wheel_keeps_wheel() {
   Decision d;
   openWheel(d);
   Result r = d.onEvent(ku(ALT));
-  CHECK(findEmit(r, Emit::Kind::Cancel) != nullptr);
-  CHECK(d.state() == S::SwallowUp);
-  CHECK(d.onEvent(mu(Btn::Left, 130, 100)).swallow);
+  CHECK(r.emits.empty());
+  CHECK(d.state() == S::Wheel);
+  CHECK(r.swallow && r.injects.size() == 3);  // the Alt-up is still masked
+  r = d.onEvent(mv(140, 90));
+  CHECK(findEmit(r, Emit::Kind::WheelMove) != nullptr);
+  r = d.onEvent(mu(Btn::Left, 140, 90));
+  CHECK(r.swallow);
+  const Emit* rel = findEmit(r, Emit::Kind::WheelRelease);
+  CHECK(rel != nullptr && rel->x == 140 && rel->y == 90);
   CHECK(d.state() == S::Idle);
+  CHECK(!d.onEvent(md(Btn::Left, 1, 1)).swallow);  // no trigger held: clicks pass again
+
+  Decision e;
+  openWheel(e);
+  e.onEvent(ku(ALT));
+  r = e.onEvent(kd(ESC));  // Esc still cancels
+  CHECK(r.swallow && findEmit(r, Emit::Kind::Cancel) != nullptr);
+  CHECK(e.onEvent(mu(Btn::Left, 130, 100)).swallow);
+  CHECK(e.state() == S::Idle);
 }
 
 static void test_trigger_released_during_pending_replays_click_after_mask() {
@@ -730,16 +747,16 @@ static void test_pause_stops_both_wheels() {
   CHECK(!d.onEvent(mu(Btn::Left, 100, 100)).swallow);
 }
 
-static void test_releasing_emote_trigger_mid_wheel_cancels() {
+static void test_releasing_emote_trigger_mid_wheel_keeps_wheel() {
   Decision d = withEmote();
   openEmoteWheel(d);
   d.onEvent(kd(ALT));  // the other wheel's trigger doesn't touch this gesture
-  CHECK(findEmit(d.onEvent(ku(ALT)), Emit::Kind::Cancel) == nullptr);
+  CHECK(d.onEvent(ku(ALT)).emits.empty());
   CHECK(d.state() == S::Wheel);
-  Result r = d.onEvent(ku(CTRL));
-  CHECK(findEmit(r, Emit::Kind::Cancel) != nullptr);
-  CHECK(d.state() == S::SwallowUp);
-  CHECK(d.onEvent(mu(Btn::Left, 130, 100)).swallow);
+  CHECK(d.onEvent(ku(CTRL)).emits.empty());
+  CHECK(d.state() == S::Wheel);
+  Result r = d.onEvent(mu(Btn::Left, 130, 100));
+  CHECK(r.swallow && emitIs(findEmit(r, Emit::Kind::WheelRelease), WheelKind::Emote));
   CHECK(d.state() == S::Idle);
 }
 
@@ -925,7 +942,7 @@ int main() {
   test_right_click_cancels_wheel();
   test_right_click_with_alt_but_no_gesture_passes();
   test_escape_cancels_wheel();
-  test_trigger_released_during_wheel_cancels();
+  test_trigger_released_during_wheel_keeps_wheel();
   test_trigger_released_during_pending_replays_click_after_mask();
   test_trigger_released_during_pending_pings_when_click_ping_on();
   test_alt_up_after_gesture_is_masked();
@@ -963,7 +980,7 @@ int main() {
   test_custom_emote_key_is_swallowed();
   test_mouse5_emote_beside_alt_ping();
   test_pause_stops_both_wheels();
-  test_releasing_emote_trigger_mid_wheel_cancels();
+  test_releasing_emote_trigger_mid_wheel_keeps_wheel();
   test_mask_menu_keys_off_leaves_alt_up_alone();
   test_mac_keycodes_map_to_vks();
   test_mac_modifier_held();

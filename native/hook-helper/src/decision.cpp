@@ -274,10 +274,9 @@ void Decision::onKeyUp(const InputEvent& e, Result& r) {
       r.injects.push_back({InjectKind::ButtonDown, dragBtn_});
       state_ = State::Idle;
     }
-  } else if (state_ == State::Wheel) {
-    r.emits.push_back(Emit{Emit::Kind::Cancel});
-    state_ = State::SwallowUp;
   }
+  // An open wheel ignores the trigger, as in League: the button-up picks the slice. A trackpad's
+  // three-finger drag sends that up about a second after the trigger is let go.
 }
 
 void Decision::onMouseDown(const InputEvent& e, Result& r) {

@@ -138,7 +138,7 @@ States: `Idle`, `Pending` (trigger held + button down, not yet moved past the th
 | `Pending`, left button up (trigger+click) | Option on: **swallow**, send `click{x,y}`. Option off: **replay** the down+up with `SendInput` (flagged as injected so the helper ignores its own events). Back to `Idle`. |
 | `Wheel`, right button down or Esc | **Swallow**, send `cancel`, go to `Idle` |
 | Trigger released during `Pending` | Treat as a plain click: replay it (or ping, if the option is on) |
-| Trigger released during `Wheel` | Send `cancel`, go to `Idle` (the matching button up will still be swallowed) |
+| Trigger released during `Wheel` | Nothing: the wheel stays open and the button up picks the slice, as in League. A trackpad's three-finger drag sends that up about a second late. |
 | Toggle hotkey | **Swallow**, flip enabled, send `toggled{enabled}`. If disabled mid-drag, also send `cancel`. |
 | Watchdog: no mouse event for 10 s while in `Wheel` or `Pending` | Send `cancel`, go to `Idle` |
 
@@ -295,7 +295,7 @@ Changes apply live, with no Save button. Writes are debounced (300 ms) and atomi
 - **C++ unit tests** for `decision.cpp` (no OS hooks), as table-driven event sequences:
   - drag opens the wheel
   - click with the option on and off
-  - trigger released early
+  - trigger released early (before the wheel opens, and while it is open)
   - right-click / Esc cancel
   - toggle mid-drag
   - watchdog
