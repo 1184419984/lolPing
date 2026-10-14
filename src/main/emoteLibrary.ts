@@ -25,7 +25,7 @@ export function emoteFileFrom(raw: unknown): EmoteFile | null {
 }
 
 /** The still the settings window encoded: a still WebP of at most STILL_MAX_BYTES and STILL_SIDE px. */
-function checkStill(b: Uint8Array): ImportError | null {
+export function checkStill(b: Uint8Array): ImportError | null {
   if (sniffImage(b) !== 'webp' || isAnimatedWebp(b)) return 'type'; // the still is served as an <img> on every overlay: it must not move
   if (b.length > STILL_MAX_BYTES) return 'size';
   const size = webpSize(b);
@@ -42,14 +42,20 @@ function checkAnim(b: Uint8Array): ImportError | null {
   return longest(size) > ANIM_MAX_SIDE ? 'animSize' : null;
 }
 
-/** What an emote looks like on screen. A room member's imported emote shows as its still, and only when it is one of ours too. */
-export function resolveEmoteArt(ref: EmoteRef, custom: readonly CustomEmote[], remote: boolean): EmoteArt {
+/**
+ * What an emote looks like on screen. A room member's imported emote shows as its still when it is one of ours too, or,
+ * through `cacheHas`, when its still arrived over the room. Anything else is the placeholder.
+ */
+export function resolveEmoteArt(ref: EmoteRef, custom: readonly CustomEmote[], remote: boolean, cacheHas: (hash: string) => boolean = () => false): EmoteArt {
   if (isBundledEmote(ref)) return { kind: 'bundled', slug: ref };
-  const emote = isCustomRef(ref) ? custom.find((c) => c.id === ref) : undefined;
-  if (!emote) return { kind: 'placeholder' };
+  if (!isCustomRef(ref)) return { kind: 'placeholder' };
   const hash = customHash(ref);
-  const animated = emote.animated && !remote;
-  return { kind: 'custom', url: animated ? customAnimUrl(hash) : customStillUrl(hash), animated };
+  const emote = custom.find((c) => c.id === ref);
+  if (emote) {
+    const animated = emote.animated && !remote;
+    return { kind: 'custom', url: animated ? customAnimUrl(hash) : customStillUrl(hash), animated };
+  }
+  return remote && cacheHas(hash) ? { kind: 'custom', url: customStillUrl(hash), animated: false } : { kind: 'placeholder' };
 }
 
 /**

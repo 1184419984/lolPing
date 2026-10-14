@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { resolveEmoteFile } from '../../src/main/appProtocol';
 import { EmoteLibrary, emoteFileFrom, resolveEmoteArt } from '../../src/main/emoteLibrary';
-import type { CustomEmote, EmoteFile } from '../../src/shared/emotes';
+import { customAnimUrl, customStillUrl, type CustomEmote, type EmoteFile } from '../../src/shared/emotes';
 
 vi.mock('electron', () => ({ net: {}, protocol: {} }));
 
@@ -309,5 +309,24 @@ describe('an emotes folder that can’t be read', () => {
     expect(warn).toHaveBeenCalledTimes(1);
     statError.code = null;
     expect(resolveEmoteFile([dir], `/${hash}.webp`)).toBe(join(dir, `${hash}.webp`)); // and again once it can be read
+  });
+});
+
+describe('resolveEmoteArt with the cache', () => {
+  const HASH = 'a'.repeat(32);
+
+  it('shows a friend’s still from the cache, never the animation', () => {
+    expect(resolveEmoteArt(`c:${HASH}`, [], true, (h) => h === HASH)).toEqual({ kind: 'custom', url: customStillUrl(HASH), animated: false });
+    expect(resolveEmoteArt(`c:${HASH}`, [], true, () => false)).toEqual({ kind: 'placeholder' });
+  });
+
+  it('never serves own emotes from the cache, and the library still wins with its animation', () => {
+    const mine = [{ id: `c:${HASH}`, name: 'Mine', animated: true }];
+    expect(resolveEmoteArt(`c:${HASH}`, mine, false, () => true)).toEqual({ kind: 'custom', url: customAnimUrl(HASH), animated: true });
+    expect(resolveEmoteArt(`c:${HASH}`, mine, true, () => true)).toEqual({ kind: 'custom', url: customStillUrl(HASH), animated: false });
+  });
+
+  it('keeps the placeholder for a malformed ref', () => {
+    expect(resolveEmoteArt('nope', [], true, () => true)).toEqual({ kind: 'placeholder' });
   });
 });
