@@ -211,6 +211,22 @@ describe('EmoteTransfer: receiving', () => {
     expect(h.t.stats.assembling).toBe(0); // three re-asks, no chunks: the next presence tries again
   });
 
+  it('sends wants over relays only while five ping tokens stay, the rest on later ticks', async () => {
+    const h = harness();
+    const hashes = Array.from({ length: 9 }, (_, n) => hashOf(still(600, n + 1))); // a full wheel, met on joining
+    h.routes.set(ANNOUNCER, 'shared');
+    h.setTokens(7); // two wants' worth above the keep mark
+    h.t.announced(ANNOUNCER, hashes);
+    expect(h.out.filter((o) => o.body.t === 'want')).toHaveLength(2); // the rest wait: pings keep their five
+    expect(h.t.stats.assembling).toBe(9);
+
+    h.setTokens(100);
+    await vi.advanceTimersByTimeAsync(100);
+    const asked = h.out.filter((o) => o.body.t === 'want').map((o) => o.body.h);
+    expect(new Set(asked)).toEqual(new Set(hashes)); // each held-back want went once, not as a re-ask
+    expect(asked).toHaveLength(9);
+  });
+
   it('drops an assembly after its timeout, and when the announcer leaves', async () => {
     const h = harness();
     const hash = hashOf(still(EMOTE_CHUNK_BYTES * 2));

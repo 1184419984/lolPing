@@ -11,7 +11,7 @@ export const ASSEMBLY_TIMEOUT_MS = 60_000;
 /** Silence before a want for the missing indexes; at most this many re-asks, then the hash waits for the next presence. */
 export const REASK_MS = 3_000;
 export const REASKS_MAX = 3;
-/** Chunk pacing: LAN unicast per requester per tick; over relays a chunk only goes when 5 ping tokens remain. */
+/** Chunk pacing: LAN unicast per requester per tick; over relays a chunk or a want only goes when 5 ping tokens remain. */
 export const TRANSFER_TICK_MS = 100;
 export const LAN_CHUNKS_PER_TICK = 2;
 /** Chunks per tick across every queue and requester: the LAN egress ceiling, ~60 KB/s however many members ask. */
@@ -27,6 +27,8 @@ interface Assembly {
   lastAt: number;
   /** The announcer our wants go to. */
   ask: string;
+  /** The first want went out. Over relays it can wait for a spare ping token. */
+  asked: boolean;
   reasks: number;
 }
 
@@ -88,8 +90,8 @@ export class EmoteTransfer {
     for (const hash of hashes) {
       if (this.deps.have(hash) || this.assemblies.has(hash)) continue;
       if (this.assemblies.size >= MAX_ASSEMBLIES) return;
-      this.assemblies.set(hash, { n: 0, parts: new Map(), bytes: 0, firstAt: this.deps.now(), lastAt: this.deps.now(), ask: peer, reasks: 0 });
-      this.sendWant(peer, hash, []);
+      const asked = this.sendWant(peer, hash, []);
+      this.assemblies.set(hash, { n: 0, parts: new Map(), bytes: 0, firstAt: this.deps.now(), lastAt: this.deps.now(), ask: peer, asked, reasks: 0 });
     }
   }
 
@@ -126,7 +128,7 @@ export class EmoteTransfer {
     if (!a) {
       if (this.deps.have(c.h)) return; // already stored: a straggler chunk must not open a zombie assembly
       if (this.assemblies.size >= MAX_ASSEMBLIES || this.pendingBytes() + part.length > MAX_PENDING_BYTES) return;
-      a = { n: 0, parts: new Map(), bytes: 0, firstAt: this.deps.now(), lastAt: this.deps.now(), ask: c.peer, reasks: 0 };
+      a = { n: 0, parts: new Map(), bytes: 0, firstAt: this.deps.now(), lastAt: this.deps.now(), ask: c.peer, asked: true, reasks: 0 };
       this.assemblies.set(c.h, a);
     }
     if (a.n === 0) a.n = c.n;
@@ -175,11 +177,14 @@ export class EmoteTransfer {
     this.deps.put(hash, full);
   }
 
-  private sendWant(peer: string, hash: string, need: readonly number[]): void {
+  /** False when it didn't go: no route, or no spare relay token (joining a room can find 9 hashes per member at once). */
+  private sendWant(peer: string, hash: string, need: readonly number[]): boolean {
     const body = { t: 'want', to: peer, h: hash, need: [...need] };
     const lane = this.deps.routeOf(peer);
     if (lane === 'lan') this.deps.sendToLan(peer, body);
-    else if (lane === 'shared') this.deps.broadcastShared(body); // relays have no point-to-point: `to` addresses it, the seal protects it
+    else if (lane === 'shared' && this.deps.spareSharedToken(RELAY_KEEP_TOKENS)) this.deps.broadcastShared(body); // `to` addresses it, the seal protects it
+    else return false;
+    return true;
   }
 
   private chunkBody(hash: string, i: number, q: SendQueue): Record<string, unknown> {
@@ -225,15 +230,20 @@ export class EmoteTransfer {
           this.assemblies.delete(hash);
           continue;
         }
+        if (!a.asked) {
+          a.asked = this.sendWant(a.ask, hash, []);
+          a.lastAt = now;
+          continue;
+        }
         if (now - a.lastAt < REASK_MS) continue;
         if (a.reasks >= REASKS_MAX) {
           this.assemblies.delete(hash); // the next presence starts over
           continue;
         }
+        const need = a.n === 0 ? [] : Array.from({ length: a.n }, (_, i) => i).filter((i) => !a.parts.has(i));
+        if (!this.sendWant(a.ask, hash, need)) continue; // waits for a token: not a re-ask yet
         a.reasks++;
         a.lastAt = now;
-        const need = a.n === 0 ? [] : Array.from({ length: a.n }, (_, i) => i).filter((i) => !a.parts.has(i));
-        this.sendWant(a.ask, hash, need);
       }
     } catch {
       // a send that failed (a packet that wouldn't seal, a route that vanished) waits for the next tick
