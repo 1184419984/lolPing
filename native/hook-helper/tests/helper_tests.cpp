@@ -561,6 +561,18 @@ static void test_custom_key_rollover_keeps_typed_order() {
   CHECK(!d.onEvent(ku(KEY_G)).swallow);
 }
 
+// Tap-through: Shift pressed while G is held sends g first, so the earlier letter isn't capitalised.
+static void test_custom_key_flushes_before_modifier() {
+  constexpr uint32_t KEY_G = 0x47, LSHIFT = 0xA0;
+  Decision d = withTrigger(Trigger::CustomVk, KEY_G);
+  d.onEvent(kd(KEY_G));
+  Result r = d.onEvent(kd(LSHIFT));
+  CHECK(r.swallow && r.injects.size() == 2);
+  CHECK(injectIs(r.injects[0], InjectKind::KeyDown, Btn::None, KEY_G));
+  CHECK(injectIs(r.injects[1], InjectKind::KeyDown, Btn::None, LSHIFT));
+  CHECK(!d.onEvent(ku(KEY_G)).swallow);
+}
+
 // Tap-through: a drag consumes the held-back key, so nothing is typed on release.
 static void test_custom_key_drag_types_nothing() {
   constexpr uint32_t KEY_G = 0x47;
@@ -569,16 +581,6 @@ static void test_custom_key_drag_types_nothing() {
   CHECK(d.onEvent(md(Btn::Left, 100, 100)).swallow);
   CHECK(findEmit(d.onEvent(mv(140, 100)), Emit::Kind::WheelOpen) != nullptr);
   CHECK(findEmit(d.onEvent(mu(Btn::Left, 140, 100)), Emit::Kind::WheelRelease) != nullptr);
-  Result r = d.onEvent(ku(KEY_G));
-  CHECK(r.swallow && r.injects.empty());
-}
-
-// Tap-through stays off where key injection is missing (macOS): the key is swallowed as before.
-static void test_custom_key_without_tap_through() {
-  constexpr uint32_t KEY_G = 0x47;
-  Decision d = withTrigger(Trigger::CustomVk, KEY_G);
-  d.setTapThrough(false);
-  CHECK(d.onEvent(kd(KEY_G)).swallow);
   Result r = d.onEvent(ku(KEY_G));
   CHECK(r.swallow && r.injects.empty());
 }
@@ -1021,8 +1023,8 @@ int main() {
   test_custom_key_trigger();
   test_custom_key_tap_types_the_key();
   test_custom_key_rollover_keeps_typed_order();
+  test_custom_key_flushes_before_modifier();
   test_custom_key_drag_types_nothing();
-  test_custom_key_without_tap_through();
   test_caps_lock_is_not_tapped_through();
   test_mouse4_trigger_drags_with_side_button();
   test_ctrl_drag_opens_emote_wheel();

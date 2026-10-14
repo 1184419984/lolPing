@@ -86,10 +86,6 @@ class Decision {
   // Windows opens the menu bar / Start menu on a lone Alt / Win key-up, so a swallowed press while one is held
   // gets a mask key before that key-up. macOS has no such behaviour: its hook layer turns this off.
   void setMaskMenuKeys(bool on) { maskMenuKeys_ = on; }
-  // Tap-through for custom-key triggers: a lone tap of the key is typed as usual (replayed on release),
-  // and a key pressed while it is held flushes it first, so typing keeps working. Needs key injection,
-  // which only the Windows hook layer has: macOS turns this off and keeps swallowing the key.
-  void setTapThrough(bool on) { tapThrough_ = on; }
 
   // Resync with the OS: forget keys we believe are down but isDown(vk) says are up
   // (key-ups the hook never saw: Win+L, Ctrl+Alt+Del, UAC, hook reinstall). Never marks a key as down.
@@ -141,8 +137,8 @@ class Decision {
   // that chord belongs to another program, so clicks pass through until every trigger is released.
   bool foreignKey_ = false;
   bool maskMenuKeys_ = true;
-  bool tapThrough_ = true;
-  // Tap-through state (custom-key triggers only, 0 = none):
+  // Tap-through, so a custom trigger key still types: a lone tap is replayed on release, and a key pressed while
+  // it is held flushes it first. State (custom-key triggers only, 0 = none):
   // heldBackVk_: the trigger key is down but not sent yet; a drag consumes it, a lone release types it.
   // typedVk_: the held-back key was flushed because another key was pressed (the user is typing):
   // its repeats and its real key-up now pass through to the OS.

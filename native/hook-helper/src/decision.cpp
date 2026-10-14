@@ -269,7 +269,7 @@ void Decision::onKeyDown(const InputEvent& e, Result& r) {
       // Tap-through: hold a custom key back instead of dropping it; onKeyUp types it if no drag used it.
       // Caps Lock keeps the old behaviour: a replayed tap would toggle it.
       const auto customKey = [&](WheelKind k) { return spec(k).trigger == Trigger::CustomVk && vk == spec(k).vk; };
-      if (tapThrough_ && !repeat && (customKey(WheelKind::Ping) || customKey(WheelKind::Emote))) heldBackVk_ = vk;
+      if (!repeat && (customKey(WheelKind::Ping) || customKey(WheelKind::Emote))) heldBackVk_ = vk;
       return;
     }
   }
