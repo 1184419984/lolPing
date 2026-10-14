@@ -33,7 +33,6 @@ Whatever a change adds, the app keeps doing these:
 | `site/` | The browser demo, reusing the overlay code |
 | `tools/` | Asset extraction, media capture, room and relay test tools |
 | `docs/design.md`, `docs/design-macos.md` | How it works and why. Read the part you change, and update it when behaviour changes. |
-| `docs/superpowers/` | Maintainers' specs and plans |
 
 Put new code where its neighbours live. A new IPC channel goes in `src/shared/ipc.ts` or `settingsChannels.ts`, a new setting in `src/shared/settings.ts`, a new string in `i18n.ts`. Reuse what's there before adding something parallel to it.
 
