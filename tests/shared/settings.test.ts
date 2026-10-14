@@ -91,8 +91,13 @@ describe('room settings', () => {
     const s = normalizeSettings({}, 'win', identity);
     expect(s).toMatchObject({
       displayName: 'darren', tagColor: 5, incomingPingLimit: 5, allowInternet: true, rejoinRoom: true,
-      lastRoomCode: null, roomMuted: false,
+      lastRoomCode: null, roomMuted: false, friendEmotes: true,
     });
+  });
+
+  it('turns friends’ custom emotes off only by an explicit false', () => {
+    expect(normalizeSettings({ friendEmotes: false }).friendEmotes).toBe(false);
+    expect(normalizeSettings({ friendEmotes: 'no' }).friendEmotes).toBe(true);
   });
 
   it('defaults to Player and colour 0 without an identity', () => {

@@ -70,6 +70,8 @@ export interface RoomDeps {
   profile(): { name: string; color: number; limit: number };
   /** Display number → where a ping for it lands here, or null to drop it. The hook share mode will replace. */
   resolveTarget(d: number): { displayId: number; width: number; height: number } | null;
+  /** The 32-hex hashes our presence announces: the custom emotes on our wheel and centre. Read on every presence. */
+  announceEmotes(): readonly string[];
 }
 
 interface Member {
@@ -80,6 +82,8 @@ interface Member {
   needsUpdate: boolean;
   noEmotes: boolean;
   muted: boolean;
+  /** The custom emote hashes their last presence announced. */
+  em: string[];
   firstSeen: number;
   /** Ever heard over the internet: dropped after the longer silence. */
   viaInternet: boolean;
@@ -92,7 +96,8 @@ const toHex = (b: Uint8Array): string => [...b].map((v) => v.toString(16).padSta
 /**
  * The room: who is in it, what we send, and what we let through. Talks to the network only through transports,
  * which carry sealed packets. Events: 'state' (RoomStateCore), 'remotePing' (RemotePing), 'remoteEmote' (RemoteEmote), 'toast' (RoomToast),
- * 'saveCode' (canonical code | null: what "rejoin last room" should remember).
+ * 'saveCode' (canonical code | null: what "rejoin last room" should remember), 'emotes' (peer, announced hashes),
+ * 'want' (WantMsg), 'chunk' (ChunkMsg) and 'memberGone' (peer), which EmoteTransfer answers.
  */
 export class RoomManager extends EventEmitter {
   /** Our peer ID: random per join, since a peer that said bye stays "gone" to the others for their whole session. */
@@ -190,6 +195,45 @@ export class RoomManager extends EventEmitter {
       else route.transport.sendTo(route.key, packet);
     }
     for (const t of sharedRoutes) if (this.relayCap.allow(t.kind, RELAY_PING_RATE, RELAY_PING_BURST)) t.broadcast(packet);
+  }
+
+  /** How a member is reached right now, for emote transfers: cheap LAN unicast, one-cast-reaches-all relays, or neither. */
+  routeKind(peer: string): 'lan' | 'shared' | null {
+    const m = this.members.get(peer);
+    const route = m && this.route(m);
+    if (!route) return null;
+    return route.transport.shared ? 'shared' : 'lan';
+  }
+
+  /** Seals and sends `body` straight to one member over its LAN path. Nothing goes when LAN isn't what reaches them. */
+  sendToLan(peer: string, body: Record<string, unknown>): void {
+    if (this.phase === 'idle' || !this.keys) return;
+    const m = this.members.get(peer);
+    const route = m && this.route(m);
+    if (!route || route.transport.shared) return;
+    try {
+      route.transport.sendTo(route.key, this.seal(body));
+    } catch {
+      // a body that wouldn't fit the packet cap is dropped; the sender's next want or tick retries
+    }
+  }
+
+  /** One sealed broadcast on every shared transport: a relay reaches the whole room. Chunk pacing is the caller's job. */
+  broadcastShared(body: Record<string, unknown>): void {
+    if (this.phase === 'idle' || !this.keys) return;
+    try {
+      const packet = this.seal(body);
+      for (const t of this.active) if (t.shared) t.broadcast(packet);
+    } catch {
+      // dropped, as above
+    }
+  }
+
+  /** True when the shared bucket can spend a token on a chunk and still keep `keep` for pings and emotes. */
+  spareSharedToken(keep: number): boolean {
+    if (this.phase === 'idle' || !this.keys) return false;
+    if (this.relayCap.tokens('internet', RELAY_PING_RATE, RELAY_PING_BURST) < keep + 1) return false;
+    return this.relayCap.allow('internet', RELAY_PING_RATE, RELAY_PING_BURST);
   }
 
   setStatusFlags(f: { paused: boolean; roomMuted: boolean }): void {
@@ -338,6 +382,7 @@ export class RoomManager extends EventEmitter {
     this.ticker = this.settle = null;
     this.phase = 'idle';
     this.code = this.keys = null;
+    for (const m of this.members.keys()) this.emit('memberGone', m);
     this.members.clear();
     this.answered.clear();
     this.staleStrikes.clear();
@@ -380,6 +425,13 @@ export class RoomManager extends EventEmitter {
     }
     if (!m) return;
     this.heard(m, t, key);
+    // Emote stills travel on their own messages. A muted member gets none of it either way; an app on another
+    // protocol generation can't have sent these (its validator drops unknown types), so the check is defence in depth.
+    if (msg.t === 'want' || msg.t === 'chunk') {
+      if (m.muted || m.needsUpdate || (msg.t === 'want' && msg.to !== this.self)) return;
+      this.emit(msg.t, msg);
+      return;
+    }
     // Pings and emotes pass the same gates and share one budget per member.
     if (this.paused || this.roomMuted || m.muted || m.needsUpdate) return;
     if (!this.limiter.allow(m.peer, this.deps.profile().limit)) return;
@@ -396,7 +448,7 @@ export class RoomManager extends EventEmitter {
     const isNew = !m;
     if (!m) {
       m = {
-        peer: msg.peer, name: msg.name, color: msg.color, status: msg.status, needsUpdate: false, noEmotes: false, muted: false,
+        peer: msg.peer, name: msg.name, color: msg.color, status: msg.status, needsUpdate: false, noEmotes: false, muted: false, em: [],
         firstSeen: this.deps.now(), viaInternet: false, paths: {},
       };
       this.members.set(m.peer, m);
@@ -407,6 +459,9 @@ export class RoomManager extends EventEmitter {
     m.status = msg.status;
     m.needsUpdate = msg.proto !== PROTOCOL_VERSION;
     m.noEmotes = isOlderThan(msg.app, EMOTES_SINCE);
+    m.em = msg.em;
+    // Every presence, so a hash whose assembly gave up is asked for again: EmoteTransfer skips what is already here.
+    this.emit('emotes', m.peer, [...m.em]);
     this.heard(m, t, key);
     if (!this.answered.has(key)) {
       this.answered.add(key);
@@ -444,6 +499,7 @@ export class RoomManager extends EventEmitter {
     this.limiter.forget(m.peer);
     for (const p of Object.values(m.paths)) this.answered.delete(p.key);
     if (this.members.size === 0 && this.phase !== 'idle') this.aloneSince = this.deps.now();
+    this.emit('memberGone', m.peer);
     this.emit('toast', { kind, name: m.name } satisfies RoomToast);
     this.emitState();
   }
@@ -471,7 +527,7 @@ export class RoomManager extends EventEmitter {
 
   private presencePacket(): Buffer {
     const p = this.deps.profile();
-    return this.seal({ t: 'presence', proto: PROTOCOL_VERSION, app: this.deps.appVersion, name: p.name, color: p.color, status: this.status() });
+    return this.seal({ t: 'presence', proto: PROTOCOL_VERSION, app: this.deps.appVersion, name: p.name, color: p.color, status: this.status(), em: [...this.deps.announceEmotes()] });
   }
 
   /**

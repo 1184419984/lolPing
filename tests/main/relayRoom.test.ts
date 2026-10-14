@@ -28,6 +28,7 @@ function peer(name: string, transports: Transport[]) {
     appVersion: '0.4.0',
     profile: () => ({ name, color: 2, limit: 0 }),
     resolveTarget: () => ({ displayId: 1, width: 1000, height: 500 }),
+    announceEmotes: () => [],
   });
   const pings: RemotePing[] = [];
   const toasts: RoomToast[] = [];

@@ -1,9 +1,11 @@
 import { app, clipboard, dialog, Menu, powerMonitor, screen, shell, systemPreferences } from 'electron';
 import { randomBytes, randomInt } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { userInfo } from 'node:os';
 import { join } from 'node:path';
 import { resolveLang, strings, type Strings } from '../shared/i18n';
 import { SETTINGS_CH, type About, type AppStatus } from '../shared/ipc';
+import { announcedEmoteHashes } from '../shared/emotes';
 import { hotkeyLabel } from '../shared/keys';
 import { configCommand, type HelperStatus } from '../shared/protocol';
 import type { RoomState } from '../shared/room';
@@ -12,7 +14,10 @@ import { overlaySettings, type Settings } from '../shared/settings';
 import { updateErrorText, type UpdateState } from '../shared/update';
 import { registerAppScheme, serveAppScheme } from './appProtocol';
 import { resolveTarget, toShared } from './displayNumbers';
+import { EmoteCache } from './emoteCache';
 import { EmoteLibrary, resolveEmoteArt } from './emoteLibrary';
+import { EmoteTransfer } from './emoteTransfer';
+import { isFile } from './fileState';
 import { InputBridge } from './inputBridge';
 import { LanTransport } from './lanTransport';
 import { RELAYS } from './relays';
@@ -69,9 +74,11 @@ function setMacMenu(): void {
 
 function start(): void {
   const library = new EmoteLibrary(join(settingsDir(), 'emotes'));
+  const cache = new EmoteCache(join(settingsDir(), 'emote-cache'), Date.now);
+  void cache.present();
   serveAppScheme({
     rendererRoot: process.env.ELECTRON_RENDERER_URL ? null : join(__dirname, '../renderer'), // development pages come from Vite
-    emoteDirs: () => [library.dir],
+    emoteDirs: () => [library.dir, cache.dir], // the library wins; the cache only fills the gaps
   });
   if (IS_MAC) {
     app.dock?.hide(); // a menu bar app: the Dock icon only shows while settings are open
@@ -88,7 +95,15 @@ function start(): void {
   let quitting = false; // read by pushStatus: once true, the tray and overlays are gone
   let capturing = false; // the settings page is listening for a key, so the helper must stay suspended
 
-  const overlays = new OverlayManager(overlaySettings(settings), (ref, remote) => resolveEmoteArt(ref, settings.customEmotes, remote));
+  const overlays = new OverlayManager(
+    overlaySettings(settings),
+    (ref, remote) =>
+      resolveEmoteArt(ref, settings.customEmotes, remote, (hash) => {
+        if (!cache.has(hash)) return false;
+        cache.touch(hash); // a shown still is the most recently used at the next cache sweep
+        return true;
+      }),
+  );
   overlays.start();
   const bridge = new InputBridge({ command: helperExePath() });
 
@@ -141,7 +156,31 @@ function start(): void {
       const target = resolveTarget(overlays.numbered(), d);
       return target ? { displayId: target.id, width: target.bounds.width, height: target.bounds.height } : null;
     },
+    announceEmotes: () => announcedEmoteHashes(settings.emoteWheel, settings.clickEmoteId),
   });
+  // Custom emote stills travel both ways: this side asks for friends' hashes and answers wants for our own.
+  const transfer = new EmoteTransfer({
+    now: Date.now,
+    enabled: () => settings.friendEmotes,
+    have: (hash) => isFile(join(library.dir, `${hash}.webp`), false) || cache.has(hash),
+    still: (hash) => {
+      try {
+        return new Uint8Array(readFileSync(join(library.dir, `${hash}.webp`)));
+      } catch {
+        return null;
+      }
+    },
+    announced: () => announcedEmoteHashes(settings.emoteWheel, settings.clickEmoteId),
+    put: (hash, bytes) => void cache.put(hash, bytes),
+    routeOf: (peer) => room.routeKind(peer),
+    sendToLan: (peer, body) => room.sendToLan(peer, body),
+    broadcastShared: (body) => room.broadcastShared(body),
+    spareSharedToken: (keep) => room.spareSharedToken(keep),
+  });
+  room.on('emotes', (peer: string, hashes: string[]) => transfer.announced(peer, hashes));
+  room.on('want', (w: Parameters<EmoteTransfer['onWant']>[0]) => transfer.onWant(w));
+  room.on('chunk', (c: Parameters<EmoteTransfer['onChunk']>[0]) => transfer.onChunk(c));
+  room.on('memberGone', (peer: string) => transfer.memberGone(peer));
   const roomState = (): RoomState => {
     const all = screen.getAllDisplays();
     return {
@@ -411,6 +450,7 @@ function start(): void {
     event.preventDefault();
     updater?.stop(); // aborts a download and drops a check in flight; an install that is quitting the app is left alone
     room.quit(); // says bye, so the others see "left" instead of waiting for a timeout
+    transfer.stop();
     stopWaitingForAccess();
     tray.destroy();
     overlays.destroy();

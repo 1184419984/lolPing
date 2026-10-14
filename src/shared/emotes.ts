@@ -44,6 +44,10 @@ const CUSTOM = /^c:[0-9a-f]{32}$/;
 /** Well-formed, whether or not it exists. Room messages are checked against this before anything looks it up. */
 export const isEmoteRefShape = (v: unknown): v is EmoteRef => typeof v === 'string' && (SLUG.test(v) || CUSTOM.test(v));
 export const isCustomRef = (v: unknown): v is EmoteRef => typeof v === 'string' && CUSTOM.test(v);
+/** The 32 lower-case hex characters a custom emote hash must be. */
+export const HASH_RE = /^[0-9a-f]{32}$/;
+/** The most hashes one presence announces: the wheel plus the centre, minus duplicates. */
+export const ANNOUNCED_MAX = 9;
 
 const BY_SLUG: ReadonlyMap<string, CatalogEmote> = new Map(EMOTE_CATALOG.map((e) => [e.slug, e]));
 
@@ -68,6 +72,18 @@ export function emoteName(ref: EmoteRef, lang: Lang, custom: readonly CustomEmot
   const bundled = catalogEmote(ref);
   if (bundled) return lang === 'zh-CN' ? bundled.nameZh : bundled.name;
   return custom.find((c) => c.id === ref)?.name ?? '?';
+}
+
+/** The hashes one presence announces: the custom emotes on the centre and wheel, distinct, at most ANNOUNCED_MAX. */
+export function announcedEmoteHashes(wheel: readonly EmoteRef[], centre: EmoteRef): string[] {
+  const out: string[] = [];
+  for (const ref of [centre, ...wheel]) {
+    if (!isCustomRef(ref)) continue;
+    const hash = customHash(ref);
+    if (!out.includes(hash)) out.push(hash);
+    if (out.length >= ANNOUNCED_MAX) break;
+  }
+  return out;
 }
 
 const isKnown = (ref: EmoteRef, custom: readonly CustomEmote[]): boolean =>
