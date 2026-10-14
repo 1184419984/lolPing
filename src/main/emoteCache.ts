@@ -1,4 +1,4 @@
-import { mkdir, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { isCustomRef } from '../shared/emotes';
 import { renameWithRetry } from './settingsStore';
@@ -13,9 +13,11 @@ const NAME_RE = /^([0-9a-f]{32})\.webp$/;
 /** Owns `<settings folder>/emote-cache/`: verified stills that arrived over a room, capped, evicted by last use. */
 export class EmoteCache {
   readonly dir: string;
-  private known = new Set<string>();
-  /** When a display last showed each emote; falls back to the file's mtime after a launch. */
-  private lastUse = new Map<string, number>();
+  /**
+   * What is on disk: each still's size and when it was last stored or shown (the file's mtime after a launch).
+   * Kept in use order too, so a tie on `at` goes to the newer use.
+   */
+  private entries = new Map<string, { size: number; at: number }>();
   /** Set after the first write failure, so the log says so once: received stills stay unavailable (the placeholder). */
   private broken = false;
 
@@ -25,25 +27,17 @@ export class EmoteCache {
 
   /** Reads what earlier sessions left behind. Run once at launch, before anything asks has(). */
   async present(): Promise<void> {
-    let names: string[];
-    try {
-      names = await readdir(this.dir);
-    } catch {
-      return; // nothing cached yet, or the folder can't be read: empty until a put succeeds
-    }
-    for (const name of names) {
-      const m = NAME_RE.exec(name);
-      if (m) this.known.add(m[1]);
-    }
+    await this.sweep();
   }
 
   has(hash: string): boolean {
-    return this.known.has(hash);
+    return this.entries.has(hash);
   }
 
-  /** A display showed this emote: it counts as the most recently used at the next sweep. */
+  /** A display showed this emote: it counts as the most recently used. */
   touch(hash: string): void {
-    if (this.known.has(hash)) this.lastUse.set(hash, this.now());
+    const e = this.entries.get(hash);
+    if (e) this.use(hash, e.size);
   }
 
   /** Stores a still that has already been verified against its hash and image header. False when the disk refused. */
@@ -54,8 +48,8 @@ export class EmoteCache {
       await mkdir(this.dir, { recursive: true });
       await writeFile(tmp, bytes);
       await renameWithRetry(tmp, join(this.dir, `${hash}.webp`));
-      this.known.add(hash);
-      await this.sweep();
+      this.use(hash, bytes.length);
+      await this.evict();
       return true;
     } catch (err) {
       await rm(tmp, { force: true }).catch(() => undefined);
@@ -67,49 +61,49 @@ export class EmoteCache {
     }
   }
 
-  /** Keeps at most CACHE_MAX_FILES stills and CACHE_MAX_BYTES, evicting the least recently used. Run after every put. */
+  /** Rebuilds the index from the folder, applies the caps and removes old temp files. A put only evicts. */
   async sweep(): Promise<void> {
     let names: string[];
     try {
       names = await readdir(this.dir);
     } catch {
-      return;
+      return; // nothing cached yet, or the folder can't be read: empty until a put succeeds
     }
-    const entries: { hash: string; at: number; size: number }[] = [];
+    const entries = new Map<string, { size: number; at: number }>();
     for (const name of names) {
       const m = NAME_RE.exec(name);
-      if (!m) continue;
+      const tmp = name.endsWith('.tmp');
+      if (!m && !tmp) continue;
       try {
         const s = await stat(join(this.dir, name));
-        entries.push({ hash: m[1], at: this.lastUse.get(m[1]) ?? s.mtimeMs, size: s.size });
+        if (m) entries.set(m[1], { size: s.size, at: this.entries.get(m[1])?.at ?? s.mtimeMs });
+        else if (this.now() - s.mtimeMs > STALE_TMP_MS) await rm(join(this.dir, name), { force: true }).catch(() => undefined);
       } catch {
         // gone between readdir and stat: it is no longer served either
       }
     }
-    entries.sort((a, b) => b.at - a.at);
-    const kept = new Set<string>();
+    this.entries = entries;
+    await this.evict();
+  }
+
+  private use(hash: string, size: number): void {
+    this.entries.delete(hash);
+    this.entries.set(hash, { size, at: this.now() });
+  }
+
+  /** Keeps at most CACHE_MAX_FILES stills and CACHE_MAX_BYTES, evicting the least recently used. */
+  private async evict(): Promise<void> {
+    const byUse = [...this.entries].reverse().sort((a, b) => b[1].at - a[1].at);
     let files = 0;
     let bytes = 0;
-    for (const e of entries) {
+    for (const [hash, e] of byUse) {
       if (files < CACHE_MAX_FILES && bytes + e.size <= CACHE_MAX_BYTES) {
         files++;
         bytes += e.size;
-        kept.add(e.hash);
         continue;
       }
-      this.lastUse.delete(e.hash);
-      await rm(join(this.dir, `${e.hash}.webp`), { force: true }).catch(() => undefined);
-    }
-    // What the sweep leaves is exactly what has() may answer, evictions included: no stale index until the next put.
-    this.known = kept;
-    for (const name of names) {
-      if (!name.endsWith('.tmp')) continue;
-      try {
-        const s = await stat(join(this.dir, name));
-        if (this.now() - s.mtimeMs > STALE_TMP_MS) await rm(join(this.dir, name), { force: true }).catch(() => undefined);
-      } catch {
-        // vanished on its own: done
-      }
+      this.entries.delete(hash); // has() says no at once, before the file is gone
+      await rm(join(this.dir, `${hash}.webp`), { force: true }).catch(() => undefined);
     }
   }
 }

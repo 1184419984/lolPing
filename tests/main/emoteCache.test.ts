@@ -39,19 +39,20 @@ describe('EmoteCache', () => {
     expect(existsSync(dir)).toBe(false);
   });
 
-  it('evicts least recently used files beyond the cap, and touch() protects a shown one', async () => {
-    const count = CACHE_MAX_FILES + 1;
-    for (let n = 0; n < count; n++) {
+  it('evicts the least recently used still beyond the cap, and touch() protects a shown one', async () => {
+    for (let n = 0; n < CACHE_MAX_FILES; n++) {
       expect(await cache.put(HASH(n), stillOf(n, 100))).toBe(true);
-      const at = new Date(Date.now() - (count - n) * 1000); // HASH(1) is the oldest on disk, HASH(0) the second oldest
+      const at = new Date(Date.now() - (CACHE_MAX_FILES - n) * 1000); // HASH(0) is the oldest on disk, HASH(1) the next
       utimesSync(join(dir, `${HASH(n)}.webp`), at, at);
     }
-    cache.touch(HASH(1)); // a display showed the oldest file just now
-    await cache.put(HASH(9), stillOf(9, 100)); // one over the cap: the sweep evicts exactly one
+    const relaunched = new EmoteCache(dir, () => clock); // after a launch, last use comes from the files' mtimes
+    await relaunched.present();
+    relaunched.touch(HASH(0)); // a display showed the oldest file just now
+    await relaunched.put(HASH(CACHE_MAX_FILES), stillOf(1, 100)); // one over the cap: exactly one goes
     expect(webpNames(dir)).toHaveLength(CACHE_MAX_FILES);
-    expect(cache.has(HASH(1))).toBe(true); // shown beats old
-    expect(cache.has(HASH(0))).toBe(false); // the runner-up went instead
-    expect(cache.has(HASH(9))).toBe(true);
+    expect(relaunched.has(HASH(0))).toBe(true); // shown beats old
+    expect(relaunched.has(HASH(1))).toBe(false); // the runner-up went instead
+    expect(relaunched.has(HASH(CACHE_MAX_FILES))).toBe(true);
   });
 
   it('keeps at most CACHE_MAX_FILES files', async () => {
