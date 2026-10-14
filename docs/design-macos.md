@@ -32,7 +32,7 @@ The helper stays one C++ program. `decision.cpp`, `commands`, `json`, `output`, 
 ### 2.1 Event tap
 
 - A `CGEventTap` (session level, head insert, active) on its own thread with a `CFRunLoop`. The main thread reads stdin and forwards commands to the tap thread's run loop.
-- **Swallow:** the callback returns `NULL`. **Replay:** a new down + up posted with `CGEventPost`. Our own events carry `kSelfMarker` in `kCGEventSourceUserData` and are ignored.
+- **Swallow:** the callback returns `NULL`. **Replay:** a new down + up posted with `CGEventPost`, for buttons and for a tapped custom trigger key (with the current modifier flags; modifier keys are never posted, their real flag change passes). Our own events carry `kSelfMarker` in `kCGEventSourceUserData` and are ignored.
 - **Watchdog:** a 1 s `CFRunLoopTimer`, same as the Windows `WM_TIMER`.
 - **Tap disabled** (`kCGEventTapDisabledByTimeout` / `ByUserInput`): re-enable it and resync key state.
 - **stdin EOF or `shutdown`:** stop the run loop, remove the tap, exit.

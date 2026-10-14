@@ -147,7 +147,8 @@ States: `Idle`, `Pending` (trigger held + button down, not yet moved past the th
 ### 5.2 Modifier side effects
 
 - **Alt / Win menu activation.** Windows opens the menu bar (Alt) or Start menu (Win) when the key goes up without any other key in between. When a wheel or ping happened while the modifier was held, the helper injects a no-op "mask" key (`VK_NONAME`, 0xFC) before the modifier's key-up. AutoHotkey uses the same trick.
-- **Caps Lock or a custom key as trigger:** that key's down/up is swallowed, so Caps state doesn't change and no character is typed.
+- **Caps Lock as trigger:** its down/up is swallowed, so Caps state doesn't change.
+- **A custom key as trigger:** its down is held back. If a drag uses it, nothing is typed. A lone tap is replayed (down + up) when the key comes up, so it still types. Another key pressed while it is held sends it first and replays that key behind it, so fast typing keeps its order. A held custom key doesn't auto-repeat until another key flushes it.
 - **Mouse 4 / Mouse 5 as trigger:** the side button itself is the drag button (press side button, move, release). A side-button click without movement is replayed so browser Back/Forward still works, or it pings if the trigger+click option is on.
 
 ### 5.3 Protocol (JSON lines, defined once in `src/shared/protocol.ts`, mirrored in C++)

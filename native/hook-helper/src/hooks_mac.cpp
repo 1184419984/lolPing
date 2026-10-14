@@ -80,13 +80,26 @@ void postButton(Btn btn, bool down) {
   CFRelease(e);
 }
 
-// Reports emits, replays buttons, and returns whether to swallow the event.
-// Key injections only carry the Windows menu-key mask, which is switched off on macOS.
+// Modifiers are left out: their real flag change always passes, and a posted key carries g_flags.
+void postKey(uint32_t vk, bool down) {
+  const int code = mac::vkToKeyCode(vk);
+  if (code < 0 || isModifierVk(vk)) return;
+  CGEventRef e = CGEventCreateKeyboardEvent(nullptr, static_cast<CGKeyCode>(code), down);
+  if (e == nullptr) return;
+  CGEventSetFlags(e, g_flags);  // a replayed Shift+G stays a capital G
+  CGEventSetIntegerValueField(e, kCGEventSourceUserData, kSelfMarker);
+  CGEventPost(kCGHIDEventTap, e);
+  CFRelease(e);
+}
+
+// Reports emits, replays buttons and keys, and returns whether to swallow the event.
 bool apply(const Result& r) {
   for (const auto& e : r.emits) g_out->emit(e);
   for (const auto& i : r.injects) {
     if (i.kind == InjectKind::ButtonDown) postButton(i.btn, true);
     if (i.kind == InjectKind::ButtonUp) postButton(i.btn, false);
+    if (i.kind == InjectKind::KeyDown) postKey(i.vk, true);
+    if (i.kind == InjectKind::KeyUp) postKey(i.vk, false);
   }
   return r.swallow;
 }
