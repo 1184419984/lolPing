@@ -65,7 +65,7 @@ export interface Settings {
   emoteSound: boolean;
   /** Imported emotes, at most MAX_CUSTOM_EMOTES. Their files live in the data folder. */
   customEmotes: CustomEmote[];
-  /** Fetch and show room members' custom emotes. Off: no fetches, no chunks, no images (not even the placeholder). */
+  /** Fetch and show room members' custom emotes. Off: nothing is fetched or served, and their images show as the placeholder. */
   friendEmotes: boolean;
   /** Look for a new version on launch and every few hours. Checking by hand always works. */
   autoUpdateCheck: boolean;

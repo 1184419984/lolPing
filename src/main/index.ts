@@ -99,7 +99,7 @@ function start(): void {
     overlaySettings(settings),
     (ref, remote) =>
       resolveEmoteArt(ref, settings.customEmotes, remote, (hash) => {
-        if (!cache.has(hash)) return false;
+        if (!settings.friendEmotes || !cache.has(hash)) return false; // off: friends' images show as the placeholder
         cache.touch(hash); // a shown still is the most recently used at the next cache sweep
         return true;
       }),
