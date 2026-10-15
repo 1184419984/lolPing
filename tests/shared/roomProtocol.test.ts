@@ -68,6 +68,17 @@ describe('chat text', () => {
 });
 
 describe('validateMessage', () => {
+  it('validates update notices without accepting download addresses or code', () => {
+    const update = { ...base, t: 'update', version: '0.6.0', repository: '1184419984/lolPing' };
+    expect(validateMessage({ ...update, url: 'https://attacker.invalid', code: 'alert(1)' })).toEqual(update);
+    expect(decodeMessage(encodeMessage(update as RoomMessage))).toEqual(update);
+    for (const version of ['v0.6.0', '0.6', '1.0.0-beta', '9999999999.0.0', null]) {
+      expect(validateMessage({ ...update, version })).toBeNull();
+    }
+    for (const repository of ['https://github.com/a/b', '../a', 'a/b/c', '', 'a/'.repeat(100), null]) {
+      expect(validateMessage({ ...update, repository })).toBeNull();
+    }
+  });
   it.each([
     ['unknown type', { ...presence, t: 'hello' }],
     ['short peer', { ...presence, peer: 'abc' }],

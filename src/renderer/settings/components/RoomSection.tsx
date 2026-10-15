@@ -2,6 +2,7 @@ import { Button, Input, Slider, Spinner } from '@fluentui/react-components';
 import {
   ArrowSync24Regular, Chat24Regular, Color24Regular, Desktop24Regular, Globe24Regular, Image24Regular, Person24Regular, PeopleCommunity24Regular,
   SpeakerMute24Regular, TopSpeed24Regular, Warning24Regular,
+  ArrowDownload24Regular,
 } from '@fluentui/react-icons';
 import { useEffect, useRef, useState } from 'react';
 import type { RoomMember, RoomState } from '../../../shared/room';
@@ -13,6 +14,7 @@ import { useText } from '../text';
 import type { Update } from '../useAppState';
 import { useRoomState } from '../useRoomState';
 import { SettingRow, SwitchRow } from './rows';
+import { HotUpdateSection } from './HotUpdateSection';
 
 const { max: LIMIT_MAX } = LIMITS.incomingPingLimit;
 /** The slider runs 1…max+1; its last stop is Unlimited (stored as 0). */
@@ -87,6 +89,7 @@ function MemberRow({ m }: { m: RoomMember }) {
         {m.name}
         {m.self ? <span className="desc inline">({t.roomYou})</span> : null}
         {m.noEmotes ? <span className="desc">{t.memberOldNoEmotes}</span> : null}
+        {m.commit ? <span className="desc">{t.hotCommit}: {m.commit.slice(0, 12)}</span> : null}
       </span>
       {m.self ? null : <span className={`badge ${m.path}`}>{t.roomPath[m.path]}</span>}
       {m.status === 'paused' ? <span className="badge">{t.roomPaused}</span> : null}
@@ -181,6 +184,11 @@ export function RoomSection({ settings: s, update }: { settings: Settings; updat
         </div>
       </SettingRow>
       {room.phase === 'idle' ? <JoinCard /> : <InRoom room={room} allowInternet={s.allowInternet} />}
+      <HotUpdateSection inRoom={room.phase === 'active'} peers={room.members.filter((m) => !m.self).length} />
+      {room.updateNotice ? <SettingRow icon={<ArrowDownload24Regular />}
+        title={t.roomUpdateNotice(room.updateNotice.name, room.updateNotice.version)}>
+        <Button icon={<ArrowSync24Regular />} onClick={() => void api.checkRoomUpdate()}>{t.roomUpdateCheck}</Button>
+      </SettingRow> : null}
       <SwitchRow icon={<SpeakerMute24Regular />} title={t.roomMute} description={t.roomMuteDesc}
         checked={s.roomMuted} onChange={(v) => void update({ roomMuted: v })} />
       <SettingRow icon={<TopSpeed24Regular />} title={t.roomLimit} description={t.roomLimitDesc} dim={s.roomMuted}>

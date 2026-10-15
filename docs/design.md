@@ -355,3 +355,49 @@ Room chat uses the same encrypted LAN and public-relay transports as pings and e
 - **Validation and limits:** a message is capped at 256 Unicode code points and 800 bytes after JSON UTF-8 encoding. Validation happens before sealing and on receipt; an invalid or over-limit message is dropped. Older peers continue to process pings, emotes and presence normally while ignoring chat.
 - **Mute and pause:** chat follows the existing room mute, per-member mute and paused semantics. The sender has a separate chat rate bucket, and a rejected send does not create a local history entry.
 - **Privacy:** chat text is sealed with the room's existing AES-256-GCM key before it reaches LAN peers or relays. LAN peers can observe local IP addresses; public relays can observe the sender's IP, anonymous room topic and timing, but not chat text or the sender's name. No new host or service is introduced.
+
+## 15. Local water reminders
+
+The bundled `src/features/hydration.js` runs with host-supplied time in an isolated worker. Settings add `hydrationEnabled` (false),
+`hydrationIntervalMin` (5–180, default 30) and `hydrationDurationS` (3–30, default 8).
+Old settings keep reminders off. Unrelated saves do not reset the deadline. Pause, screen lock and suspend disarm it;
+resume starts a complete interval. A due reminder waits for the wheel and composer to close. Late ticks emit once, not in a burst.
+
+The generic feature stage uses the existing click-through overlays on every display. It renders the supplied
+`drink_water_akali.png` as a full-viewport image with a localized caption. It never measures a hidden layer, which used
+to produce zero-sized art. A preview replaces the earlier reminder. Pause and disable clear it. Only the primary plays Base.wav, using ping volume and mute.
+No window becomes focusable and no input hook or room packet is added. The supplied image is not extracted from the game;
+the existing League assets still use the extraction pipeline.
+
+## 16. Room update notices
+
+`update {version, repository}` is an additive protocol-v1 message. Old validators drop it and keep processing existing messages.
+The packet has no executable bytes, scripts, file paths or download URL. Known, compatible, unmuted members may suggest
+a higher plain x.y.z version of the receiver's configured repository. One room-wide bucket accepts a notice per minute;
+sending has its own once-per-minute bucket. Replay, pause and mute checks still apply. Leave clears notices and buckets.
+
+`pushRoomUpdate` checks the sender's release source before sending. It refuses to send if the app quits or the room session
+changes during the check. A recipient sees an unverified suggestion in Room settings and a passive toast. Only Check this update
+invokes the recipient's own updater; only the existing Update action downloads and installs. Receiving a notice never contacts GitHub.
+
+Release links derive from `package.json`'s `build.publish`, including the Mac API and room repository identifier.
+This fork points at `1184419984/lolPing`. Windows packaging writes the matching feed; installed upstream apps keep their
+old feed until manually replaced. A receiver-capable version must be installed once. These legacy notices request full-app upgrades,
+separate from Git feature updates. No new host or transport is added. The shared-room-key identity limitation still applies:
+a notice is not publisher authentication.
+
+Windows helper builds use UTF-8 and the conforming MSVC preprocessor so raw-string assertions compile on Chinese Windows too.
+
+## 17. Git feature updates
+
+`hot {repository, commit, digest}` and `feature {module, commit, topic, data}` are additive protocol-v1 messages.
+Presence optionally includes the feature commit. Older apps ignore the new fields and types. Invitations use the
+existing room-wide once-per-minute bucket and mute/pause/replay gates. Receiving does not contact GitHub.
+The receiver explicitly accepts or declines; accepting downloads only from the configured Git repository.
+Git ancestry, not numeric versions or hash sorting, decides whether a commit is newer. Multiple commits can be skipped.
+
+The Hot Features workflow produces prerelease artifacts for each tested main commit, independent of the installer feed.
+The app verifies branch head, tag commit, artifact size/hash, API and host compatibility, then stages bounded QuickJS
+workers and atomically switches script runtimes. Settings and state survive; failure retains or restores the previous
+snapshot. Input hooks and room transports never reload. Electron, native and host changes require an installer update.
+The first receiver-capable installer must be installed once. See [hot-updates.md](hot-updates.md) for the contract.

@@ -3,6 +3,7 @@ import type { AppUpdater } from 'electron-updater';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CHECK_TIMEOUT_MS, INSTALL_TOAST_MS, WinBackend, type WinBackendDeps } from '../../src/main/updateWin';
 import { DamagedDownloadError, type UpdateInfo } from '../../src/main/updater';
+import { releasePage } from '../../src/shared/project';
 
 interface Deferred<T> {
   promise: Promise<T>;
@@ -19,7 +20,7 @@ function deferred<T>(): Deferred<T> {
   return { promise, resolve, reject };
 }
 
-const INFO: UpdateInfo = { version: '0.5.1', notesUrl: 'https://github.com/darrenprx/lolPing/releases/tag/v0.5.1' };
+const INFO: UpdateInfo = { version: '0.5.1', notesUrl: releasePage('0.5.1') };
 
 /** The parts of electron-updater's AppUpdater that WinBackend uses. */
 class FakeUpdater extends EventEmitter {

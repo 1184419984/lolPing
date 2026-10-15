@@ -2,6 +2,7 @@ import { net, protocol } from 'electron';
 import { pathToFileURL } from 'node:url';
 import { isFile } from './fileState';
 import { resolveInside } from './safePath';
+import type { ModuleAssets } from './moduleAssets';
 
 /**
  * lolping://app/... serves the production pages, so fetch() works for sounds (file:// would block it), and
@@ -48,9 +49,21 @@ async function fetchUncached(file: string): Promise<Response> {
 }
 
 /** Host `emotes` from `emoteDirs()`; host `app` from `rendererRoot` when set (production); anything else is not found. */
-export function serveAppScheme(opts: { rendererRoot: string | null; emoteDirs: () => readonly string[] }): void {
+export function serveAppScheme(opts: {
+  rendererRoot: string | null;
+  emoteDirs: () => readonly string[];
+  modules?: ModuleAssets;
+}): void {
   protocol.handle(APP_SCHEME, (request) => {
     const url = new URL(request.url);
+    if (url.host === 'modules') {
+      const asset = opts.modules?.read(url.pathname);
+      if (!asset) return notFound();
+      return new Response(new Uint8Array(asset.bytes), { headers: {
+        'Content-Type': asset.mime, 'Cache-Control': 'public, max-age=31536000, immutable',
+        'X-Content-Type-Options': 'nosniff', 'Access-Control-Allow-Origin': '*',
+      } });
+    }
     if (url.host === 'emotes') {
       const file = resolveEmoteFile(opts.emoteDirs(), url.pathname);
       return file ? fetchUncached(file) : notFound();

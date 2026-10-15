@@ -88,6 +88,11 @@ Creating an active tap needs Accessibility. If `CGEventTapCreate` returns `NULL`
 
 ## 6. Known Mac limitations
 
+Water reminders and Git feature updates use the shared click-through overlays and isolated QuickJS workers.
+The native event tap and room connection do not restart during a feature update. Scripts and feature media
+can change online; Electron, native hooks and host changes still require an installer update and may need
+Accessibility to be granted again. See [hot-updates.md](hot-updates.md) for the Git-based contract.
+
 - Unsigned: first launch needs System Settings → Privacy & Security → Open Anyway.
 - Accessibility must be granted again after every update (ad-hoc signatures change with each build).
 - Windows of apps running with elevated privileges and the login window can't be pinged over; some full-screen games draw above the overlay.

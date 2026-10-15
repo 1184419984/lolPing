@@ -1,4 +1,5 @@
 import { autoUpdater, CancellationToken, type AppUpdater, type ProgressInfo } from 'electron-updater';
+import { releasePage } from '../shared/project';
 import { DamagedDownloadError, type UpdateBackend, type UpdateInfo } from './updater';
 
 /** A check that hasn't answered by now has failed: electron-updater has no timeout of its own, so a hung request would hold `checking` forever. */
@@ -9,8 +10,6 @@ export const CHECK_TIMEOUT_MS = 30_000;
  * overlay windows, so without this wait the toast is sent but never painted.
  */
 export const INSTALL_TOAST_MS = 1500;
-
-const RELEASE_PAGE = 'https://github.com/darrenprx/lolPing/releases/tag/v';
 
 export interface WinBackendDeps {
   /** LOLPING_UPDATE_TEST_URL: a folder that serves latest.yml, used instead of GitHub. */
@@ -72,7 +71,7 @@ export class WinBackend implements UpdateBackend {
     if (!result?.isUpdateAvailable) return null; // electron-updater's own version comparison decides
     const version: unknown = result.updateInfo?.version;
     if (typeof version !== 'string' || version === '') throw new Error('GitHub sent an unexpected answer');
-    return { version, notesUrl: `${RELEASE_PAGE}${encodeURIComponent(version)}` };
+    return { version, notesUrl: releasePage(version) };
   }
 
   async download(_info: UpdateInfo, onProgress: (percent: number) => void, signal: AbortSignal): Promise<void> {

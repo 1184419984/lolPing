@@ -2,6 +2,9 @@ import { ANNOUNCED_MAX, HASH_RE, isEmoteRefShape, type EmoteRef } from './emotes
 import { isPingId, type PingId } from './pings';
 import { isTagColor } from './roomColors';
 import { validateChatText } from './chat';
+import { isVersion } from './update';
+import { GIT_COMMIT } from './hotUpdate';
+import { MODULE_HASH, MODULE_ID, MODULE_KEY, moduleJson } from './modules';
 
 /** Bumped when room messages change incompatibly. Peers on another version are shown as "needs update". */
 export const PROTOCOL_VERSION = 1;
@@ -29,6 +32,7 @@ export interface PresenceMsg extends Base {
   status: MemberStatus;
   /** Added in 0.5.2: the 32-hex hashes of the custom emotes on our wheel and centre, at most 9. Older apps leave it out. */
   em: string[];
+  commit?: string;
 }
 export interface PingMsg extends Base {
   t: 'ping';
@@ -71,7 +75,15 @@ export interface ChatMsg extends Base {
   t: 'chat';
   text: string;
 }
-export type RoomMessage = PresenceMsg | PingMsg | EmoteMsg | WantMsg | ChunkMsg | ByeMsg | ChatMsg;
+/** Older protocol-v1 peers ignore this notice; downloads are verified through the receiver's own update source. */
+export interface UpdateMsg extends Base {
+  t: 'update';
+  version: string;
+  repository: string;
+}
+export interface HotMsg extends Base { t: 'hot'; repository: string; commit: string; digest: string }
+export interface FeatureMsg extends Base { t: 'feature'; module: string; commit: string; topic: string; data: unknown }
+export type RoomMessage = PresenceMsg | PingMsg | EmoteMsg | WantMsg | ChunkMsg | ByeMsg | ChatMsg | UpdateMsg | HotMsg | FeatureMsg;
 
 // C0/C1 controls, zero-width characters, bidi marks, embeddings and isolates, BOM, line/paragraph separators,
 // soft hyphen, combining grapheme joiner, Arabic letter mark, Mongolian vowel separator and the Hangul fillers
@@ -122,7 +134,8 @@ export function validateMessage(raw: unknown): RoomMessage | null {
       const { proto, app, name, color, status, em } = raw;
       if (!isUint(proto) || typeof app !== 'string' || app.length > MAX_APP_VERSION || typeof name !== 'string') return null;
       if (!isTagColor(color) || !STATUSES.includes(status as MemberStatus)) return null;
-      return { t, ...base, proto, app, name: sanitizeName(name.slice(0, 256)), color, status: status as MemberStatus, em: emList(em) };
+      return { t, ...base, proto, app, name: sanitizeName(name.slice(0, 256)), color, status: status as MemberStatus, em: emList(em),
+        ...(typeof raw.commit === 'string' && GIT_COMMIT.test(raw.commit) ? { commit: raw.commit } : {}) };
     }
     case 'ping': {
       const { ping, d, x, y } = raw;
@@ -156,6 +169,24 @@ export function validateMessage(raw: unknown): RoomMessage | null {
     case 'chat': {
       const text = validateChatText(raw.text);
       return text.ok ? { t, ...base, text: text.text } : null;
+    }
+    case 'update': {
+      const { version, repository } = raw;
+      if (!isVersion(version) || typeof repository !== 'string' || repository.length > 140) return null;
+      if (!/^[A-Za-z0-9-]{1,39}\/[A-Za-z0-9._-]{1,100}$/.test(repository)) return null;
+      return { t, ...base, version, repository };
+    }
+    case 'hot': {
+      const { repository, commit, digest } = raw;
+      if (typeof repository !== 'string' || !/^[A-Za-z0-9-]{1,39}\/[A-Za-z0-9._-]{1,100}$/.test(repository)) return null;
+      if (typeof commit !== 'string' || !GIT_COMMIT.test(commit) || typeof digest !== 'string' || !MODULE_HASH.test(digest)) return null;
+      return { t, ...base, repository, commit, digest };
+    }
+    case 'feature': {
+      const { module, commit, topic, data } = raw;
+      if (typeof module !== 'string' || !MODULE_ID.test(module) || typeof topic !== 'string' || !MODULE_KEY.test(topic)) return null;
+      if (typeof commit !== 'string' || !GIT_COMMIT.test(commit) || moduleJson(data, 400) === null) return null;
+      return { t, ...base, module, commit, topic, data };
     }
     default:
       return null;

@@ -10,6 +10,7 @@ import type { OverlaySettings } from '../shared/settings';
 import { physicalToLocal, type DisplayMap } from './coords';
 import { numberDisplays, type NumberedDisplay } from './displayNumbers';
 import { IS_MAC, loadPage, preloadPath } from './paths';
+import type { ModuleFrame } from '../shared/hotUpdate';
 
 /** A ping the user just placed, in overlay-local CSS px: the room shares these. */
 export interface SharedPing {
@@ -155,6 +156,33 @@ export class OverlayManager extends EventEmitter {
 
   toast(title: string, body: string): void {
     this.send(screen.getPrimaryDisplay().id, 'toast:show', { title, body });
+  }
+
+  get wheelOpen(): boolean {
+    return this.wheelDisplay !== null;
+  }
+
+  /** Every display shows the reminder; only the primary display plays its sound. */
+  remindHydration(title: string, durationS: number): void {
+    const primary = screen.getPrimaryDisplay().id;
+    for (const id of this.windows.keys()) this.send(id, 'hydration:show', { title, durationS, sound: id === primary });
+  }
+
+  clearHydration(): void {
+    for (const id of this.windows.keys()) this.send(id, 'hydration:clear', null);
+  }
+
+  showFeature(frame: ModuleFrame): void {
+    const primary = screen.getPrimaryDisplay().id;
+    for (const id of this.windows.keys()) {
+      if (frame.scene.display === 'all' || id === primary) this.send(id, 'feature:show', frame);
+    }
+  }
+  clearFeatures(module?: string, key?: string): void {
+    for (const id of this.windows.keys()) this.send(id, 'feature:clear', { module, key });
+  }
+  featureSound(url: string, volume: number): void {
+    this.send(screen.getPrimaryDisplay().id, 'feature:sound', { url, volume });
   }
 
   destroy(): void {

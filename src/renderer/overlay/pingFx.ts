@@ -30,7 +30,7 @@ const div = (cls: string): HTMLDivElement => {
 };
 
 /** Adds one animated ping at (x, y) and removes it when its animation ends. */
-export function spawnPing(layer: HTMLElement, def: PingDef, x: number, y: number, opts: PingFxOptions): void {
+export function spawnPing(layer: HTMLElement, def: Pick<PingDef, 'art' | 'color'>, x: number, y: number, opts: PingFxOptions): void {
   const root = div('ping');
   root.style.left = `${x}px`;
   root.style.top = `${y}px`;

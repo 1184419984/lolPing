@@ -9,6 +9,14 @@ function subscribe<T>(channel: string, cb: (v: T) => void): () => void {
 }
 
 const api: SettingsApi = {
+  getHot: () => ipcRenderer.invoke(SETTINGS_CH.hotGet),
+  onHot: (cb) => subscribe(SETTINGS_CH.hotState, cb),
+  pushHot: () => ipcRenderer.invoke(SETTINGS_CH.hotPush),
+  acceptHot: () => ipcRenderer.invoke(SETTINGS_CH.hotAccept),
+  dismissHot: () => ipcRenderer.invoke(SETTINGS_CH.hotDismiss),
+  rollbackHot: () => ipcRenderer.invoke(SETTINGS_CH.hotRollback),
+  configureModule: (id, values) => ipcRenderer.invoke(SETTINGS_CH.moduleConfigure, id, values),
+  moduleAction: (id, action) => ipcRenderer.invoke(SETTINGS_CH.moduleAction, id, action),
   // Inlined rather than imported: a sandboxed preload can't require a shared chunk.
   platform: process.platform === 'darwin' ? 'mac' : 'win',
   getSettings: () => ipcRenderer.invoke(SETTINGS_CH.get),
@@ -18,6 +26,7 @@ const api: SettingsApi = {
   onStatus: (cb) => subscribe(SETTINGS_CH.statusChanged, cb),
   setEnabled: (on) => ipcRenderer.invoke(SETTINGS_CH.setEnabled, on),
   previewPing: (id) => ipcRenderer.invoke(SETTINGS_CH.preview, id),
+  previewHydration: () => ipcRenderer.invoke(SETTINGS_CH.previewHydration),
   previewEmote: (ref) => ipcRenderer.invoke(SETTINGS_CH.previewEmote, ref),
   importEmote: (file) => ipcRenderer.invoke(SETTINGS_CH.emoteImport, file),
   removeEmote: (id) => ipcRenderer.invoke(SETTINGS_CH.emoteRemove, id),
@@ -37,6 +46,8 @@ const api: SettingsApi = {
   copyRoomCode: () => ipcRenderer.invoke(SETTINGS_CH.roomCopy),
   retryInternet: () => ipcRenderer.invoke(SETTINGS_CH.roomRetryInternet),
   openChat: () => ipcRenderer.invoke(SETTINGS_CH.roomOpenChat),
+  pushRoomUpdate: () => ipcRenderer.invoke(SETTINGS_CH.roomPushUpdate),
+  checkRoomUpdate: () => ipcRenderer.invoke(SETTINGS_CH.roomCheckUpdate),
   onShowSection: (cb) => subscribe(SETTINGS_CH.showSection, cb),
   getUpdate: () => ipcRenderer.invoke(SETTINGS_CH.updateGet),
   onUpdate: (cb) => subscribe(SETTINGS_CH.updateState, cb),

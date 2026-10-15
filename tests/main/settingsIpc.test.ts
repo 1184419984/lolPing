@@ -9,6 +9,7 @@ import { SettingsStore } from '../../src/main/settingsStore';
 import { strings } from '../../src/shared/i18n';
 import { SETTINGS_CH } from '../../src/shared/ipc';
 import type { UpdateState } from '../../src/shared/update';
+import { LATEST_RELEASE_URL } from '../../src/shared/project';
 
 const h = vi.hoisted(() => ({
   handlers: new Map<string, (event: unknown, ...args: unknown[]) => unknown>(),
@@ -194,13 +195,13 @@ describe('update IPC', () => {
       h.opened.length = 0;
       registerWith(fakeUpdate(state, null));
       await call(SETTINGS_CH.updateOpenRelease);
-      expect(h.opened, state.phase).toEqual(['https://github.com/darrenprx/lolPing/releases/latest']);
+      expect(h.opened, state.phase).toEqual([LATEST_RELEASE_URL]);
     }
   });
 
   it('openReleasePage never opens a link that is not a web page', async () => {
     registerWith(fakeUpdate(AVAILABLE, 'file:///C:/Windows/System32/calc.exe'));
     await call(SETTINGS_CH.updateOpenRelease);
-    expect(h.opened).toEqual(['https://github.com/darrenprx/lolPing/releases/latest']);
+    expect(h.opened).toEqual([LATEST_RELEASE_URL]);
   });
 });

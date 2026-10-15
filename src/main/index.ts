@@ -8,7 +8,7 @@ import { SETTINGS_CH, type About, type AppStatus } from '../shared/ipc';
 import { announcedEmoteHashes } from '../shared/emotes';
 import { hotkeyLabel, MOD } from '../shared/keys';
 import { configCommand, type HelperStatus } from '../shared/protocol';
-import type { RoomState } from '../shared/room';
+import type { RoomState, RoomUpdateNotice } from '../shared/room';
 import { formatRoomCode, parseRoomCode } from '../shared/roomCode';
 import { overlaySettings, type Settings } from '../shared/settings';
 import { updateErrorText, type UpdateState } from '../shared/update';
@@ -20,6 +20,13 @@ import { EmoteLibrary, resolveEmoteArt } from './emoteLibrary';
 import { EmoteTransfer } from './emoteTransfer';
 import { isFile } from './fileState';
 import { InputBridge } from './inputBridge';
+import { HotManager } from './hotManager';
+import { HotSource } from './hotSource';
+import { ModuleAssets } from './moduleAssets';
+import { HydrationReminder } from './hydrationReminder';
+import { verifyHotPublisher } from './hotGit';
+import { type BuildIdentity, type HotBundle, type HotInvitation, type HotState } from '../shared/hotUpdate';
+import { HYDRATION_TEXTURE } from '../shared/hydration';
 import { LanTransport } from './lanTransport';
 import { RELAYS } from './relays';
 import { RelayTransport } from './relayTransport';
@@ -27,6 +34,7 @@ import { OverlayManager, type SharedEmote, type SharedPing } from './overlayMana
 import { assetPath, buildResourcePath, helperExePath, IS_MAC, PLATFORM, settingsDir } from './paths';
 import { deriveRoomKeys } from './roomCrypto';
 import { RoomManager, type RoomToast } from './roomManager';
+import { pushRoomUpdate } from './roomUpdate';
 import { registerSettingsIpc } from './settingsIpc';
 import { SettingsStore } from './settingsStore';
 import { onSettingsWindowGone, openSettingsWindow, settingsWindow } from './settingsWindow';
@@ -37,6 +45,8 @@ import { WinBackend } from './updateWin';
 import { Updater } from './updater';
 
 const ACCESSIBILITY_PANE = 'x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility';
+declare const __BUILD_IDENTITY__: BuildIdentity;
+declare const __BUILTIN_FEATURES__: HotBundle;
 
 registerAppScheme();
 app.setAppUserModelId('com.lolping.app');
@@ -73,13 +83,16 @@ function setMacMenu(): void {
   Menu.setApplicationMenu(Menu.buildFromTemplate([{ role: 'appMenu' }, { role: 'editMenu' }, { role: 'windowMenu' }]));
 }
 
-function start(): void {
+async function start(): Promise<void> {
   const library = new EmoteLibrary(join(settingsDir(), 'emotes'));
   const cache = new EmoteCache(join(settingsDir(), 'emote-cache'), Date.now);
+  const moduleAssets = new ModuleAssets();
+  const moduleUrls = new WeakMap<import('../shared/modules').ModulePayload, Record<string, string>>();
   void cache.present();
   serveAppScheme({
     rendererRoot: process.env.ELECTRON_RENDERER_URL ? null : join(__dirname, '../renderer'), // development pages come from Vite
     emoteDirs: () => [library.dir, cache.dir], // the library wins; the cache only fills the gaps
+    modules: moduleAssets,
   });
   if (IS_MAC) {
     app.dock?.hide(); // a menu bar app: the Dock icon only shows while settings are open
@@ -107,6 +120,26 @@ function start(): void {
       }),
   );
   overlays.start();
+  let hot: HotManager | null = null;
+  let hotRoomCode: string | null = null;
+  const fallbackHydration = new HydrationReminder(Date.now);
+  let locked = false;
+  let asleep = false;
+  const syncHydration = (): void => {
+    fallbackHydration.configure(settings);
+    fallbackHydration.setPaused(!enabled || locked || asleep);
+    if (!enabled || locked || asleep) { overlays.clearHydration(); overlays.clearFeatures(); }
+    else if (!settings.hydrationEnabled) { overlays.clearHydration(); overlays.clearFeatures('hydration'); }
+    hot?.contextChanged();
+  };
+  syncHydration();
+  const hydrationTimer = setInterval(() => {
+    const script = hot?.state().modules.find((m) => m.manifest.id === 'hydration');
+    if (script && script.phase !== 'error') { fallbackHydration.reset(); return; }
+    if (fallbackHydration.tick(!capturing && !chatEditing && !overlays.wheelOpen)) {
+      overlays.remindHydration(text().hydrationTitle, settings.hydrationDurationS);
+    }
+  }, 1000);
   const bridge = new InputBridge({ command: helperExePath() });
 
   // Updates: only in an installed build, or in a development build pointed at a test server with LOLPING_UPDATE_TEST_URL.
@@ -159,6 +192,66 @@ function start(): void {
       return target ? { displayId: target.id, width: target.bounds.width, height: target.bounds.height } : null;
     },
     announceEmotes: () => announcedEmoteHashes(settings.emoteWheel, settings.clickEmoteId),
+    featureCommit: () => hot?.commit ?? __BUILD_IDENTITY__.commit,
+  });
+  const hotSource = new HotSource(fetch);
+  hot = new HotManager({
+    dir: join(settingsDir(), 'hot-features'), worker: join(__dirname, 'moduleWorker.js'),
+    identity: __BUILD_IDENTITY__, builtin: __BUILTIN_FEATURES__, source: hotSource,
+    context: () => ({ now: Date.now(), lang: resolveLang(settings.language, app.getLocale()),
+      paused: !enabled || locked || asleep, busy: capturing || chatEditing || overlays.wheelOpen,
+      room: room.state().phase === 'active', texts: { hydrationTitle: {
+        en: strings('en', PLATFORM).hydrationTitle, 'zh-CN': strings('zh-CN', PLATFORM).hydrationTitle,
+      } },
+    }),
+    hydration: () => ({ enabled: settings.hydrationEnabled, intervalMin: settings.hydrationIntervalMin, durationS: settings.hydrationDurationS }),
+    clear: () => { overlays.clearFeatures(); overlays.clearHydration(); moduleAssets.clear(); },
+    command: (module, commit, command, payload) => {
+      if (quitting || !enabled || locked || asleep) return;
+      let assets = moduleUrls.get(payload);
+      if (!assets) {
+        assets = { 'builtin:hydration': `../textures/${HYDRATION_TEXTURE}.png`, ...moduleAssets.register(payload) };
+        moduleUrls.set(payload, assets);
+      } else moduleAssets.register(payload);
+      if (command.op === 'show' && !capturing && !chatEditing && !overlays.wheelOpen) {
+        overlays.showFeature({ module, generation: commit, lang: resolveLang(settings.language, app.getLocale()), scene: command.scene, assets });
+      } else if (command.op === 'clear') overlays.clearFeatures(module, command.key);
+      else if (command.op === 'sound' && !capturing && !chatEditing && !overlays.wheelOpen) {
+        overlays.featureSound(command.asset === 'builtin:Base' ? '../sounds/Base.wav' : assets[command.asset], command.volume);
+      }
+      else if (command.op === 'publish') room.sendFeature(module, commit, command.topic, command.data);
+    },
+    verifyPublisher: async (commit) => {
+      const session = room.self;
+      if (room.state().phase !== 'active') throw new Error('notInRoom');
+      await verifyHotPublisher({ ...__BUILD_IDENTITY__, commit: hot?.commit ?? __BUILD_IDENTITY__.commit }, app.isPackaged, app.getAppPath(), commit);
+      const peers = room.state().members.filter((m) => !m.self && m.commit && m.commit !== commit);
+      const signal = AbortSignal.timeout(15_000);
+      let eligible = false;
+      for (const peer of peers) if (peer.commit && await hotSource.newer(peer.commit, commit, signal)) eligible = true;
+      if (!eligible) throw new Error('noPeers');
+      if (room.self !== session || room.state().phase !== 'active' || quitting) throw new Error('cancelled');
+    },
+    publish: (commit, digest) => room.sendHot(commit, digest),
+  });
+  room.on('hot', (offer: HotInvitation) => {
+    hot?.offer(offer); if (!quitting) overlays.toast(text().hotTitle, text().hotReceived(offer.name, offer.commit.slice(0, 12)));
+  });
+  room.on('feature', (data: unknown) => { void hot?.roomEvent(data); });
+  room.on('chatReset', () => hot?.dismiss());
+  room.on('state', () => {
+    const code = room.state().code;
+    if (code !== hotRoomCode) { hotRoomCode = code; hot?.cancel(); }
+  });
+  let announcedCommit = __BUILD_IDENTITY__.commit;
+  hot.on('state', (s: HotState) => {
+    if (quitting) return;
+    sendToSettings(SETTINGS_CH.hotState, s);
+    if (s.commit !== announcedCommit) { announcedCommit = s.commit; room.profileChanged(); }
+  });
+  await hot.start().catch((error: unknown) => {
+    console.warn('[hot]', error);
+    overlays.toast(text().hotTitle, text().hotErrors.runtime);
   });
   const syncInputSuspend = (): void => bridge.send({ type: 'suspend', on: capturing || chatEditing });
   const chat = new ChatWindow({
@@ -307,6 +400,9 @@ function start(): void {
   }
   const syncRoomFlags = (): void => room.setStatusFlags({ paused: !enabled, roomMuted: settings.roomMuted });
   room.on('state', pushRoom);
+  room.on('updateNotice', (n: RoomUpdateNotice) => {
+    if (!quitting) overlays.toast(text().roomUpdateTitle, text().roomUpdateReceived(n.name, n.version));
+  });
   overlays.on('displays', pushRoom);
   room.on('remotePing', (p) => overlays.spawnRemote(p));
   overlays.on('shared', (p: SharedPing) => {
@@ -329,9 +425,14 @@ function start(): void {
     else overlays.toast(t.toastMemberLost(n.name), code);
   });
   powerMonitor.on('resume', () => {
+    asleep = false;
+    syncHydration();
     lan.rebind();
     relay.wake();
   });
+  powerMonitor.on('suspend', () => { asleep = true; syncHydration(); });
+  powerMonitor.on('lock-screen', () => { locked = true; syncHydration(); });
+  powerMonitor.on('unlock-screen', () => { locked = false; syncHydration(); });
 
   function pushStatus(): void {
     if (quitting) return;
@@ -352,6 +453,7 @@ function start(): void {
   function setEnabled(on: boolean): void {
     if (on === enabled) return;
     enabled = on;
+    syncHydration();
     bridge.send(configCommand(store.get(), enabled)); // also refreshes the config re-sent after restarts
     const t = text();
     overlays.toast(on ? t.toastOn : t.toastOff, t.toastToggleHint(hotkeyLabel(store.get().toggleHotkey, PLATFORM)));
@@ -384,6 +486,7 @@ function start(): void {
   store.on('change', (s: Settings) => {
     const previous = settings;
     settings = s;
+    syncHydration();
     bridge.send(configCommand(s, enabled));
     overlays.updateSettings(overlaySettings(s));
     settingsWindow()?.webContents.send(SETTINGS_CH.changed, s);
@@ -406,11 +509,27 @@ function start(): void {
   });
 
   registerSettingsIpc({
+    hot,
     store,
     library,
     getStatus: status,
     setEnabled,
     preview: (id) => overlays.previewPing(id),
+    previewHydration: () => {
+      if (!enabled || locked || asleep) return;
+      const script = hot?.state().modules.find((m) => m.manifest.id === 'hydration');
+      if (!script || script.phase === 'error') overlays.remindHydration(text().hydrationTitle, settings.hydrationDurationS);
+      else void hot?.action('hydration', 'preview');
+    },
+    pushRoomUpdate: () => pushRoomUpdate({ room, updater, currentVersion: app.getVersion(), isQuitting: () => quitting }),
+    checkRoomUpdate: async () => {
+      if (!updater) {
+        overlays.toast(text().roomUpdateTitle, text().roomUpdateErrors.unavailable);
+        return;
+      }
+      openSettingsWindow('app');
+      await updater.check(true);
+    },
     previewEmote: (ref) => overlays.previewEmote(ref),
     about,
     retryHelper: startHelper,
@@ -474,6 +593,7 @@ function start(): void {
     if (quitting) return;
     quitting = true;
     event.preventDefault();
+    clearInterval(hydrationTimer);
     updater?.stop(); // aborts a download and drops a check in flight; an install that is quitting the app is left alone
     chat.destroy();
     room.quit(); // says bye, so the others see "left" instead of waiting for a timeout
@@ -481,6 +601,6 @@ function start(): void {
     stopWaitingForAccess();
     tray.destroy();
     overlays.destroy();
-    void Promise.allSettled([bridge.stop(), store.flush(), lan.whenClosed(), relay.whenClosed()]).then(() => app.exit(0));
+    void Promise.allSettled([bridge.stop(), store.flush(), lan.whenClosed(), relay.whenClosed(), hot?.stop()]).then(() => app.exit(0));
   });
 }

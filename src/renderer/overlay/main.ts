@@ -10,6 +10,8 @@ import type { PingTag } from '../../shared/ipc';
 import type { WheelKind } from '../../shared/protocol';
 import { DEFAULT_SETTINGS, overlaySettings, type OverlaySettings } from '../../shared/settings';
 import { EmoteStage } from './emoteFx';
+import { HydrationStage } from './hydrationFx';
+import { ModuleStage } from './moduleFx';
 import { spawnPing } from './pingFx';
 import { SoundBank } from './soundBank';
 import { showToast } from './toast';
@@ -29,6 +31,14 @@ pingLayer.after(emoteLayer);
 
 const sounds = new SoundBank();
 const stage = new EmoteStage(emoteLayer);
+const hydrationLayer = document.createElement('div');
+hydrationLayer.id = 'hydration';
+pingLayer.before(hydrationLayer);
+const hydration = new HydrationStage(hydrationLayer);
+const featureLayer = document.createElement('div');
+featureLayer.id = 'features'; pingLayer.before(featureLayer);
+const features = new ModuleStage(featureLayer);
+let featureAudio: HTMLAudioElement | null = null;
 let settings: OverlaySettings = overlaySettings(DEFAULT_SETTINGS);
 const [fallbackPing] = pingsFor([DEFAULT_CLICK_PING]);
 const volume = (): number => (settings.muted ? 0 : settings.volume / 100);
@@ -99,6 +109,18 @@ window.overlay.on('ping:spawn', (p) => ping(pingById(p.id) ?? fallbackPing, p.x,
 window.overlay.on('emote:spawn', (p) => emote(p.owner, p.art, p.x, p.y, p.tag));
 window.overlay.on('emote:clear', (p) => stage.clear(p.owner));
 window.overlay.on('toast:show', (t) => showToast(toastLayer, t.title, t.body));
+window.overlay.on('hydration:show', (p) => {
+  hydration.show(p.title, p.durationS);
+  if (p.sound) sounds.play('Base', volume());
+});
+window.overlay.on('hydration:clear', () => hydration.clear());
+window.overlay.on('feature:show', (frame) => features.show(frame));
+window.overlay.on('feature:clear', (p) => { features.clear(p.module, p.key); featureAudio?.pause(); featureAudio = null; });
+window.overlay.on('feature:sound', (p) => {
+  featureAudio?.pause(); featureAudio = new Audio(p.url);
+  featureAudio.volume = volume() * p.volume;
+  void featureAudio.play().catch(() => undefined);
+});
 
 /** Resolves with `label` when the image at `url` doesn't load. */
 const probe = (url: string, label: string): Promise<string | null> =>

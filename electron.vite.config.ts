@@ -2,12 +2,19 @@ import { resolve } from 'node:path';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'electron-vite';
 import { pruneAssets } from './tools/pruneAssets';
+import { buildFeatures } from './tools/hotBuild';
+
+const features = buildFeatures();
 
 export default defineConfig({
   main: {
+    define: {
+      __BUILD_IDENTITY__: JSON.stringify(features.identity),
+      __BUILTIN_FEATURES__: features.bundle,
+    },
     build: {
       rollupOptions: {
-        input: { index: resolve('src/main/index.ts') },
+        input: { index: resolve('src/main/index.ts'), moduleWorker: resolve('src/main/moduleWorker.ts') },
         output: { format: 'cjs', entryFileNames: '[name].js' },
       },
     },

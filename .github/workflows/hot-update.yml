@@ -1,0 +1,38 @@
+name: Hot Features
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hot-features
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run test:helper
+      - run: npm test
+      - run: node tools/hot-publish.mjs
+      - name: Publish commit artifacts without changing the installer feed
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="hot-${GITHUB_SHA}"
+          gh release view "$tag" || gh release create "$tag" --target "$GITHUB_SHA" --title "Features ${GITHUB_SHA:0:12}" --prerelease --latest=false
+          gh release upload "$tag" out/hot-release/*.json --clobber

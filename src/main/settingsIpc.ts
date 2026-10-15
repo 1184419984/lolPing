@@ -4,24 +4,29 @@ import type { Strings } from '../shared/i18n';
 import { SETTINGS_CH, type About, type AppStatus, type SetSettingsResult } from '../shared/ipc';
 import { hotkeyLabel, hotkeyToAccelerator, type Hotkey } from '../shared/keys';
 import { pingById, type PingId } from '../shared/pings';
+import { LATEST_RELEASE_URL, PROJECT_URL } from '../shared/project';
 import type { Platform } from '../shared/platform';
-import type { JoinResult, RoomState } from '../shared/room';
+import type { JoinResult, RoomState, RoomUpdateResult } from '../shared/room';
 import { patchClashes, rendererPatch } from '../shared/settings';
 import type { UpdateState } from '../shared/update';
 import { emoteFileFrom, type EmoteLibrary } from './emoteLibrary';
 import type { SettingsStore } from './settingsStore';
+import type { HotManager } from './hotManager';
+import { MODULE_ID, MODULE_KEY, moduleJson, moduleObject } from '../shared/modules';
 
-const PROJECT_URL = 'https://github.com/darrenprx/lolPing';
-/** Where "What's new" goes when no update is known. */
-export const LATEST_RELEASE_URL = `${PROJECT_URL}/releases/latest`;
+export { LATEST_RELEASE_URL } from '../shared/project';
 
 export interface SettingsIpcDeps {
+  hot?: HotManager;
   store: SettingsStore;
   /** Imported emotes' files. Only the import and remove handlers change `customEmotes`. */
   library: EmoteLibrary;
   getStatus(): AppStatus;
   setEnabled(on: boolean): void;
   preview(id: PingId): void;
+  previewHydration(): void;
+  pushRoomUpdate(): Promise<RoomUpdateResult>;
+  checkRoomUpdate(): Promise<void>;
   previewEmote(ref: EmoteRef): void;
   about(): About;
   retryHelper(): void;
@@ -68,6 +73,23 @@ function hotkeyConflict(next: Hotkey, current: Hotkey, text: Strings, platform: 
 }
 
 export function registerSettingsIpc(d: SettingsIpcDeps): void {
+  ipcMain.handle(SETTINGS_CH.hotGet, () => d.hot?.state());
+  ipcMain.handle(SETTINGS_CH.hotPush, () => d.hot?.push());
+  ipcMain.handle(SETTINGS_CH.hotAccept, () => d.hot?.accept());
+  ipcMain.handle(SETTINGS_CH.hotDismiss, () => d.hot?.dismiss());
+  ipcMain.handle(SETTINGS_CH.hotRollback, () => d.hot?.rollback());
+  ipcMain.handle(SETTINGS_CH.moduleConfigure, (_e, id: unknown, raw: unknown) => {
+    if (typeof id !== 'string' || !MODULE_ID.test(id) || !moduleObject(raw) || moduleJson(raw) === null) {
+      return { ok: false, error: 'invalid' };
+    }
+    return d.hot?.configure(id, raw);
+  });
+  ipcMain.handle(SETTINGS_CH.moduleAction, (_e, id: unknown, action: unknown) => {
+    if (typeof id !== 'string' || !MODULE_ID.test(id) || typeof action !== 'string' || !MODULE_KEY.test(action)) {
+      return { ok: false, error: 'invalid' };
+    }
+    return d.hot?.action(id, action);
+  });
   // Imports and removals run one at a time, so each sees the list the one before it left (the duplicate and full checks).
   let emoteQueue: Promise<unknown> = Promise.resolve();
   const oneAtATime = <T>(fn: () => Promise<T>): Promise<T> => {
@@ -94,6 +116,7 @@ export function registerSettingsIpc(d: SettingsIpcDeps): void {
     const p = typeof id === 'string' ? pingById(id) : undefined;
     if (p) d.preview(p.id);
   });
+  ipcMain.handle(SETTINGS_CH.previewHydration, () => d.previewHydration());
   ipcMain.handle(SETTINGS_CH.previewEmote, (_e, ref: unknown) => {
     if (isEmoteRefShape(ref)) d.previewEmote(ref);
   });
@@ -133,6 +156,8 @@ export function registerSettingsIpc(d: SettingsIpcDeps): void {
   ipcMain.handle(SETTINGS_CH.roomCopy, () => d.room.copyCode());
   ipcMain.handle(SETTINGS_CH.roomRetryInternet, () => d.room.retryInternet());
   ipcMain.handle(SETTINGS_CH.roomOpenChat, () => d.openChat());
+  ipcMain.handle(SETTINGS_CH.roomPushUpdate, () => d.pushRoomUpdate());
+  ipcMain.handle(SETTINGS_CH.roomCheckUpdate, () => d.checkRoomUpdate());
 
   ipcMain.handle(SETTINGS_CH.updateGet, (): UpdateState | null => d.update?.state() ?? null);
   ipcMain.handle(SETTINGS_CH.updateCheck, async () => {

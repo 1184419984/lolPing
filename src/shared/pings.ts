@@ -1,3 +1,5 @@
+import { HYDRATION_TEXTURE } from './hydration';
+
 export type PingId =
   | 'danger' | 'push' | 'omw' | 'allin' | 'assist' | 'needvision' | 'missing' | 'enemyvision' | 'generic'
   | 'bait' | 'visioncleared';
@@ -58,5 +60,5 @@ export function allSoundNames(): string[] {
 }
 
 export function allTextureNames(): string[] {
-  return [...new Set([...ALL_PINGS.flatMap((p) => [p.icon, ...p.art]), FALLBACK_TEXTURE])];
+  return [...new Set([...ALL_PINGS.flatMap((p) => [p.icon, ...p.art]), FALLBACK_TEXTURE, HYDRATION_TEXTURE])];
 }

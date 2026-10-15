@@ -19,6 +19,21 @@ describe('normalizeSettings', () => {
     expect(s.clickPing).toBe(true);
   });
 
+  it('defaults old settings to reminders off and normalizes their interval and duration', () => {
+    expect(normalizeSettings({ volume: 30 })).toMatchObject({
+      hydrationEnabled: false, hydrationIntervalMin: 30, hydrationDurationS: 8,
+    });
+    expect(normalizeSettings({ hydrationEnabled: true, hydrationIntervalMin: 17, hydrationDurationS: 99 })).toMatchObject({
+      hydrationEnabled: true, hydrationIntervalMin: 15, hydrationDurationS: 30,
+    });
+    expect(normalizeSettings({ hydrationEnabled: 'yes', hydrationIntervalMin: NaN, hydrationDurationS: '8' })).toMatchObject({
+      hydrationEnabled: false, hydrationIntervalMin: 30, hydrationDurationS: 8,
+    });
+    expect(normalizeSettings({ hydrationIntervalMin: -5, hydrationDurationS: 0 })).toMatchObject({
+      hydrationIntervalMin: 5, hydrationDurationS: 3,
+    });
+  });
+
   it('clamps and rounds numbers to their limits', () => {
     const s = normalizeSettings({ dragThresholdPx: 0, pingSizePx: 999, pingDurationS: 3.27, volume: 55.6 });
     expect(s.dragThresholdPx).toBe(2);

@@ -3,7 +3,18 @@ import type { MemberStatus } from './roomProtocol';
 export type TransportStatus = 'off' | 'starting' | 'ok' | 'unavailable';
 export type MemberPath = 'lan' | 'internet' | 'connecting' | 'unreachable';
 
+export interface RoomUpdateNotice {
+  peer: string;
+  name: string;
+  version: string;
+}
+
+export type RoomUpdateResult =
+  | { ok: true; version: string }
+  | { ok: false; error: 'notInRoom' | 'paused' | 'noPeers' | 'rateLimited' | 'unavailable' | 'failed' };
+
 export interface RoomMember {
+  commit?: string;
   peer: string;
   name: string;
   /** Index into TAG_COLORS. */
@@ -33,6 +44,8 @@ export interface RoomStateCore {
    * or old packets replayed. Only a hint: such packets never add a member.
    */
   clockSkew: boolean;
+  /** An unverified suggestion from a member, never permission to download or execute code. */
+  updateNotice?: RoomUpdateNotice;
 }
 
 /** What the settings window shows: the room plus this machine's display numbers. */

@@ -6,9 +6,9 @@
   "description": "League of Legends style ping wheel for your Windows and macOS desktop",
   "author": "Danrui Meng (https://github.com/darrenprx)",
   "license": "MIT",
-  "homepage": "https://github.com/darrenprx/lolPing#readme",
-  "repository": { "type": "git", "url": "https://github.com/darrenprx/lolPing.git" },
-  "bugs": "https://github.com/darrenprx/lolPing/issues",
+  "homepage": "https://github.com/1184419984/lolPing#readme",
+  "repository": { "type": "git", "url": "https://github.com/1184419984/lolPing.git" },
+  "bugs": "https://github.com/1184419984/lolPing/issues",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
@@ -27,6 +27,7 @@
   "devDependencies": {
     "@fluentui/react-components": "9.74.9",
     "@fluentui/react-icons": "2.0.343",
+    "@jitl/quickjs-singlefile-cjs-release-sync": "0.32.0",
     "@noble/secp256k1": "3.2.0",
     "@types/node": "22.20.4",
     "@types/react": "19.3.0",
@@ -38,6 +39,7 @@
     "electron-updater": "6.8.10",
     "electron-vite": "5.0.0",
     "esbuild": "0.25.12",
+    "quickjs-emscripten-core": "0.32.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "typescript": "5.9.3",
@@ -79,6 +81,6 @@
       }
     },
     "dmg": { "artifactName": "lolPing-${version}-arm64.dmg" },
-    "publish": [{ "provider": "github", "owner": "darrenprx", "repo": "lolPing" }]
+    "publish": [{ "provider": "github", "owner": "1184419984", "repo": "lolPing" }]
   }
 }

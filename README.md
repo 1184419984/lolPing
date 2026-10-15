@@ -11,14 +11,14 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/darrenprx/lolPing/releases/latest"><b>Download for Windows</b></a> ·
-  <a href="https://github.com/darrenprx/lolPing/releases/latest"><b>Download for Mac</b></a> (Apple Silicon, experimental)
+  <a href="https://github.com/1184419984/lolPing/releases/latest"><b>Download for Windows</b></a> ·
+  <a href="https://github.com/1184419984/lolPing/releases/latest"><b>Download for Mac</b></a> (Apple Silicon, experimental)
 </p>
 
 <p align="center">
-  <a href="https://github.com/darrenprx/lolPing/actions/workflows/ci.yml"><img src="https://github.com/darrenprx/lolPing/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/darrenprx/lolPing/releases/latest"><img src="https://img.shields.io/github/v/release/darrenprx/lolPing" alt="Latest release"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/darrenprx/lolPing" alt="MIT license"></a>
+  <a href="https://github.com/1184419984/lolPing/actions/workflows/ci.yml"><img src="https://github.com/1184419984/lolPing/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/1184419984/lolPing/releases/latest"><img src="https://img.shields.io/github/v/release/1184419984/lolPing" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/1184419984/lolPing" alt="MIT license"></a>
 </p>
 
 <p align="center"><img src="docs/media/demo.gif" width="880" alt="An app freezes with a not-responding dialog, and the ping wheel drops three Enemy Missing pings on it"></p>
@@ -29,7 +29,7 @@ Pings and emotes show up in whole-screen capture, so friends watching your Disco
 
 ### Windows
 
-1. Download `lolPing-Setup-<version>.exe` from the [latest release](https://github.com/darrenprx/lolPing/releases/latest).
+1. Download `lolPing-Setup-<version>.exe` from the [latest release](https://github.com/1184419984/lolPing/releases/latest).
 2. Run it. The installer isn't code-signed, so Windows SmartScreen may say "Windows protected your PC". Select **More info**, then **Run anyway**.
 3. lolPing opens its settings and moves to the tray. Hold Alt and drag anywhere to ping.
 
@@ -37,9 +37,9 @@ lolPing is built for Windows 11, 64-bit. Windows 10 may work, but it isn't teste
 
 ### macOS (experimental)
 
-The Mac version needs an Apple Silicon Mac (M1 or later) and macOS 12 or later. It is built and tested automatically, but hasn't had much use on real Macs yet. Please [report](https://github.com/darrenprx/lolPing/issues) anything that doesn't work.
+The Mac version needs an Apple Silicon Mac (M1 or later) and macOS 12 or later. It is built and tested automatically, but hasn't had much use on real Macs yet. Please [report](https://github.com/1184419984/lolPing/issues) anything that doesn't work.
 
-1. Download `lolPing-<version>-arm64.dmg` from the [latest release](https://github.com/darrenprx/lolPing/releases/latest), open it, and drag lolPing into Applications.
+1. Download `lolPing-<version>-arm64.dmg` from the [latest release](https://github.com/1184419984/lolPing/releases/latest), open it, and drag lolPing into Applications.
 2. Open lolPing. It isn't signed by a registered Apple developer, so macOS says it can't check it for malware. Select **Done**, open **System Settings → Privacy & Security**, scroll down, select **Open Anyway** next to the lolPing message, and confirm.
    If macOS instead says lolPing "is damaged", run `xattr -dr com.apple.quarantine /Applications/lolPing.app` in Terminal and open it again.
 3. lolPing asks for **Accessibility** access, which it needs to read the mouse and keyboard. Select **Open System Settings** and turn lolPing on. Pinging starts as soon as it's allowed.
@@ -82,6 +82,16 @@ The wheel, from the top going clockwise: Danger, Push, On My Way, All In, Assist
 
 Settings are saved in `%APPDATA%\lolPing\settings.json` on Windows and `~/Library/Application Support/lolPing/settings.json` on a Mac.
 
+## Drink water reminders
+
+Turn on **Settings → Health → Drink water reminder**. It is off by default. The interval is 5–180 minutes
+(30 by default), and the display duration is 3–30 seconds (8 by default). **Preview reminder** shows it immediately.
+
+The supplied `drink_water_akali.png` fills every display, with a localized caption. The desktop stays click-through
+and keeps its focus. Sound uses the ping volume and mute settings, on the primary display only. Pause, screen lock and sleep
+stop reminders; resuming starts a fresh interval without catching up. An active wheel or chat composer defers a due reminder.
+Reminders stay on this computer, never go to the room, and collect or send no health data.
+
 ## Updates
 
 lolPing checks GitHub for a new version 10 seconds after it starts, then every 6 hours. When there is one, you get a notice on screen, and the tray menu and **Settings → App → About** offer **Update**. It asks first: nothing downloads until you click.
@@ -89,8 +99,20 @@ lolPing checks GitHub for a new version 10 seconds after it starts, then every 6
 - **Windows:** one click downloads the installer, verifies it, installs it silently into the same folder and restarts lolPing. The settings window opens after the restart.
 - **Mac:** lolPing downloads the disk image to your Downloads folder, verifies it, explains what to do, opens it, and quits. Drag lolPing into Applications, choose **Replace**, open it, and allow Accessibility again.
 - **Check for updates** in the tray menu, or in **Settings → App → About**, checks right away. From the tray, the result (up to date, or what went wrong) appears as a notice on screen.
-- **Check for updates automatically** (Settings → App, on by default) controls the scheduled checks. With it off, lolPing contacts GitHub only when you click **Check for updates** or **Update**.
+- **Check for updates automatically** (Settings → App, on by default) controls scheduled installer checks. With it off, lolPing contacts GitHub only when you click an update action, including **Push latest commit**, **Accept update** or **Check this update**.
 - **Privacy:** a check tells GitHub your IP address and lolPing's version, nothing else.
+
+### Push an update to your room
+
+Click **Settings → Room → Push latest commit** to invite members to a Git feature update. They explicitly accept
+or decline; accepting replaces compatible script features without restarting. See [Git hot updates](#git-hot-updates).
+Native and host changes still use the installer update controls in App settings. Legacy installer notices from older
+clients can still be checked there; they do not hot-replace the running host. Receiving a notice does not download,
+focus a window or restart the app. Clients without the hot-update host need to install it once.
+
+This fork's update source is `1184419984/lolPing`, configured once in `package.json`'s `build.publish`.
+Windows update metadata, the Mac API, release links and room notices use it. Installed upstream apps still check upstream
+and need one manual installation of this fork to switch. Room notices reuse existing LAN and relay connections; no new host is added.
 
 ## Ping with friends (rooms)
 
@@ -109,6 +131,30 @@ Join a room and everyone in it sees your pings on their own screen, at the same 
 - **Room chat:** while you are in a room and lolPing is enabled, press **Ctrl + Alt + Enter** to focus the chat box. You can also click **Open chat** in **Settings → Room** or the tray's **Room** menu, including when another app owns that shortcut. The lower-left HUD follows League's in-game chat: coloured text lines on the desktop, with a thin rectangular input underneath while typing. It grows to fit its content and stays anchored at the bottom, so empty transparent space does not intercept clicks. Press **Enter** to send and close the input, or **Esc** or click away to close it. Messages from friends, and your own messages, appear passively for about 10 seconds without taking focus. The input helper is suspended while the box is active, and chat follows the existing pause and mute controls. Older apps ignore chat messages.
 - The current room session keeps up to 100 entries, including local and remote pings with their existing icons and localized names alongside chat text. Preview pings are excluded, and adding a ping entry creates no extra network packet. Each line shows the local time in 24-hour `[HH:mm]` format. Leaving or switching rooms clears the history. A message is at most 256 Unicode code points and 800 UTF-8 JSON-encoded bytes; the byte limit can make the practical limit lower for non-ASCII text. Chat has its own sending rate bucket.
 - **Privacy:** pings, emotes, your emote images, chat text and names are end-to-end encrypted with a key made from the room code. Chat uses the same LAN and relay connections; it adds no new host. People on your network can see your local IP address. With internet connections on, public relays see your IP address, an anonymous room ID and when you send, but never your pings, emotes, images, chat text or name. Turn **Allow internet connections** off to stay on your local network.
+
+## Git hot updates
+
+Settings → Room shows the current Git commit and accepts or declines update invitations. Any member running the
+latest published commit can push an invitation. Receiving one does not download or execute anything.
+Accepting checks the fixed `1184419984/lolPing` remote, verifies the commit, build and SHA-256, then switches the
+script features without restarting Electron or leaving the room. The target must be a strict descendant of your
+current commit on `main`; it can skip any number of commits. Hashes are not compared alphabetically.
+
+There is no separate feature version to maintain. Commit and push to `main`; the Hot Features workflow publishes
+`hot-<full commit hash>` artifacts after tests pass. These prereleases do not replace the installer update feed.
+For a source build, publishing also requires a clean checkout, the correct `origin`, and `HEAD` equal to the pushed
+remote head. `node tools/hot-publish.mjs` checks these conditions and builds artifacts locally; it does not push Git.
+
+The initial installer containing this host is required on every machine. Script logic, declarative overlays,
+timers, module settings, bounded local state, image/audio assets and room feature messages can hot update.
+Electron, native hooks and host APIs still need an installer update. An incompatible host build is rejected.
+New scripts are tested in isolated QuickJS workers with CPU, memory and output limits. A failed activation keeps
+the old runtime; a later script failure restores the previous commit when available. Roll back is also available.
+
+Privacy: invitations and feature messages use the existing encrypted room transports. Accepting an update or
+pushing an invitation contacts GitHub APIs and GitHub release/CDN infrastructure; GitHub sees your IP and requested
+repository/commit. No local source files, Git credentials or publisher fingerprints are shared with the room.
+See [docs/hot-updates.md](docs/hot-updates.md) for the script contract and publishing steps.
 
 ## Known limitations
 
@@ -150,6 +196,10 @@ npm run dev
 
 Bump `version` in `package.json`, commit, then push a matching tag such as `v0.2.0`. The Release workflow creates the GitHub release as a draft. The Windows job attaches the installer, `latest.yml` and the installer's `.blockmap`, and the Mac job attaches the disk image. electron-updater needs both `latest.yml` and the `.blockmap` to update installed copies. A last job publishes the release once everything is attached.
 
+For this fork, enable GitHub Actions in `1184419984/lolPing`, keep the repository public, and allow the workflow to write releases.
+Run `npm run typecheck`, `npm run test:helper` and `npm test` before tagging a higher version.
+Both platform jobs must succeed before the draft is published. Room members cannot download a feature committed only on your computer.
+
 ## How it works
 
 - **Input:** [`native/hook-helper`](native/hook-helper) is a small C++ process that owns the low-level mouse and keyboard hooks on Windows, or an event tap on macOS. It swallows the Alt + drag so the app underneath never sees it, and talks to Electron in JSON lines over stdin and stdout.
@@ -167,7 +217,7 @@ Pull requests and ideas are welcome. Before you start:
 - Read [AGENTS.md](AGENTS.md): the layout, the behaviour every change keeps, and the code, test and commit conventions. If you use an AI tool, give it that file too. Claude Code reads it through `CLAUDE.md`, and most other agents read `AGENTS.md` on their own.
 - Title the pull request in [Conventional Commits](https://www.conventionalcommits.org/) style, such as `fix(helper): keep clicks in order after a cancelled wheel`. Pull requests are squash-merged, so the title becomes the commit on `main`.
 - Keep one change per pull request and fill in the template. CI has to pass on Windows and macOS before anything merges.
-- For bigger ideas, open an issue or a [discussion](https://github.com/darrenprx/lolPing/discussions) first, so we can agree on the approach before you write it.
+- For bigger ideas, open an issue or a [discussion](https://github.com/1184419984/lolPing/discussions) first, so we can agree on the approach before you write it.
 
 ## Ping assets
 

@@ -189,6 +189,16 @@ describe('OverlayManager remote and preview emotes', () => {
 });
 
 describe('OverlayManager window bounds', () => {
+  it('shows a local reminder on every display with sound only on the primary and never shares it', () => {
+    const pings: unknown[] = [];
+    mgr.on('shared', (p: unknown) => pings.push(p));
+    mgr.remindHydration('Water', 8);
+    expect(sent(0)).toEqual([['hydration:show', { title: 'Water', durationS: 8, sound: true }]]);
+    expect(sent(1)).toEqual([['hydration:show', { title: 'Water', durationS: 8, sound: false }]]);
+    expect(pings).toEqual([]);
+    mgr.clearHydration();
+    for (const i of [0, 1]) expect(sent(i).at(-1)).toEqual(['hydration:clear', null]);
+  });
   it('leaves the bottom row of each display uncovered on Windows, so the taskbar does not see a full-screen app', () => {
     for (const w of h.windows) w.emit('ready-to-show');
     expect(h.windows.map((w) => w.bounds)).toEqual([

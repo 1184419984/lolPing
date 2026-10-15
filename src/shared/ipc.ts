@@ -4,9 +4,11 @@ import type { Lang } from './i18n';
 import type { PingId } from './pings';
 import type { Platform } from './platform';
 import type { HelperStatus, WheelKind } from './protocol';
-import type { JoinResult, RoomState } from './room';
+import type { JoinResult, RoomState, RoomUpdateResult } from './room';
 import type { OverlaySettings, Settings } from './settings';
 import type { UpdateState } from './update';
+import type { HotState, ModuleFrame } from './hotUpdate';
+import type { ModuleResult, ModuleValues } from './modules';
 
 export interface Point {
   x: number;
@@ -33,13 +35,18 @@ export interface OverlayEvents {
   'emote:spawn': Point & { owner: string; art: EmoteArt; tag?: PingTag };
   'emote:clear': { owner: string };
   'toast:show': { title: string; body: string };
+  'hydration:show': { title: string; durationS: number; sound: boolean };
+  'hydration:clear': null;
+  'feature:show': ModuleFrame;
+  'feature:clear': { module?: string; key?: string };
+  'feature:sound': { url: string; volume: number };
 }
 
 export type OverlayChannel = keyof OverlayEvents;
 
 export const OVERLAY_CHANNELS: readonly OverlayChannel[] = [
   'overlay:settings', 'wheel:open', 'wheel:move', 'wheel:release', 'wheel:cancel', 'ping:spawn', 'emote:spawn', 'emote:clear',
-  'toast:show',
+  'toast:show', 'hydration:show', 'hydration:clear', 'feature:show', 'feature:clear', 'feature:sound',
 ];
 
 /** overlay renderer → main: string[] of asset files that failed to load. */
@@ -94,6 +101,14 @@ export { SETTINGS_CH } from './settingsChannels';
 
 /** window.settingsApi in the settings renderer. */
 export interface SettingsApi {
+  getHot(): Promise<HotState>;
+  onHot(cb: (state: HotState) => void): () => void;
+  pushHot(): Promise<ModuleResult>;
+  acceptHot(): Promise<ModuleResult>;
+  dismissHot(): Promise<void>;
+  rollbackHot(): Promise<ModuleResult>;
+  configureModule(id: string, values: ModuleValues): Promise<ModuleResult>;
+  moduleAction(id: string, action: string): Promise<ModuleResult>;
   readonly platform: Platform;
   getSettings(): Promise<Settings>;
   setSettings(patch: Partial<Settings>): Promise<SetSettingsResult>;
@@ -102,6 +117,7 @@ export interface SettingsApi {
   onStatus(cb: (s: AppStatus) => void): () => void;
   setEnabled(on: boolean): Promise<void>;
   previewPing(id: PingId): Promise<void>;
+  previewHydration(): Promise<void>;
   /** Plays the emote in the middle of the primary display, without sharing it. */
   previewEmote(ref: EmoteRef): Promise<void>;
   /** Saves an image prepared by the settings window and adds it to the imported emotes. */
@@ -129,6 +145,10 @@ export interface SettingsApi {
   retryInternet(): Promise<void>;
   /** Opens the desktop room chat input. */
   openChat(): Promise<void>;
+  /** Sends only a version notice; no executable bytes or arbitrary download URLs travel through the room. */
+  pushRoomUpdate(): Promise<RoomUpdateResult>;
+  /** Checks the configured release source only after the receiver chooses to do so. */
+  checkRoomUpdate(): Promise<void>;
   /** The main process asks to scroll to a section (e.g. tray → Room settings…). */
   onShowSection(cb: (id: string) => void): () => void;
   /** Where the update checker is, or null when this build has none (a development build): then the page shows no update controls. */

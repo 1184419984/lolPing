@@ -41,6 +41,9 @@ export interface Settings {
   volume: number;
   muted: boolean;
   tickSound: boolean;
+  hydrationEnabled: boolean;
+  hydrationIntervalMin: number;
+  hydrationDurationS: number;
   launchAtStartup: boolean;
   language: LanguagePref;
   /** Shown under your pings on other people's screens. */
@@ -94,6 +97,9 @@ export const DEFAULT_SETTINGS: Settings = {
   volume: 70,
   muted: false,
   tickSound: true,
+  hydrationEnabled: false,
+  hydrationIntervalMin: 30,
+  hydrationDurationS: 8,
   launchAtStartup: false,
   language: 'auto',
   displayName: 'Player',
@@ -122,11 +128,13 @@ export const LIMITS = {
   volume: { min: 0, max: 100, step: 1 },
   incomingPingLimit: { min: 0, max: 20, step: 1 },
   emoteSizePx: { min: 80, max: 300, step: 1 },
+  hydrationIntervalMin: { min: 5, max: 180, step: 5 },
+  hydrationDurationS: { min: 3, max: 30, step: 1 },
 } as const;
 
 type NumKey = keyof typeof LIMITS;
 type BoolKey = 'enabledOnStart' | 'clickPing' | 'gameCheck' | 'muted' | 'tickSound' | 'launchAtStartup' | 'allowInternet' | 'rejoinRoom' | 'roomMuted'
-  | 'emoteClick' | 'emoteSound' | 'friendEmotes' | 'autoUpdateCheck';
+  | 'emoteClick' | 'emoteSound' | 'friendEmotes' | 'autoUpdateCheck' | 'hydrationEnabled';
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const isVk = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 254;
@@ -233,6 +241,9 @@ export function normalizeSettings(raw: unknown, platform: Platform = 'win', iden
     volume: num(r.volume, 'volume'),
     muted: bool(r.muted, 'muted'),
     tickSound: bool(r.tickSound, 'tickSound'),
+    hydrationEnabled: bool(r.hydrationEnabled, 'hydrationEnabled'),
+    hydrationIntervalMin: num(r.hydrationIntervalMin, 'hydrationIntervalMin'),
+    hydrationDurationS: num(r.hydrationDurationS, 'hydrationDurationS'),
     launchAtStartup: bool(r.launchAtStartup, 'launchAtStartup'),
     language: (LANGUAGE_PREFS as readonly unknown[]).includes(r.language) ? (r.language as LanguagePref) : DEFAULT_SETTINGS.language,
     displayName: typeof r.displayName === 'string' ? sanitizeName(r.displayName, fallbackName) : fallbackName,
