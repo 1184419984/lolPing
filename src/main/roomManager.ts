@@ -15,6 +15,7 @@ import { open, seal, type RoomKeys } from './roomCrypto';
 import type { PeerKey, Transport, TransportStatus } from './transport';
 import type { HotInvitation } from '../shared/hotUpdate';
 import type { ModuleResult } from '../shared/modules';
+import { validateGamePacket, type GamePacket } from '../shared/game';
 
 export const MAX_MEMBERS = 8;
 const SETTLE_MS = 3000;
@@ -35,6 +36,10 @@ const TRANSFER_RATE = 60;
 /** Chat is paced independently of wheel gestures, for both LAN and relay members. */
 const CHAT_RATE = 1;
 const CHAT_BURST = 3;
+const GAME_RATE = 4;
+const GAME_BURST = 8;
+const GAME_SYNC_RATE = 32;
+const GAME_SYNC_BURST = 48;
 const UPDATE_RATE = 1 / 60;
 /** Presence asked for on a shared transport (a change, a new link, a new member): at most this often. */
 const SHARED_PRESENCE_MS = 1000;
@@ -84,9 +89,11 @@ export interface RoomDeps {
   /** The 32-hex hashes our presence announces: the custom emotes on our wheel and centre. Read on every presence. */
   announceEmotes(): readonly string[];
   featureCommit?(): string;
+  gameCenter?: boolean;
 }
 
 interface Member {
+  game?: 1;
   commit?: string;
   peer: string;
   name: string;
@@ -132,6 +139,7 @@ export class RoomManager extends EventEmitter {
   private readonly transferLimiter: RateLimiter;
   private readonly chatLimiter: RateLimiter;
   private readonly chatSendLimiter: RateLimiter;
+  private readonly gameLimiter: RateLimiter;
   private chatEntries: ChatEntry[] = [];
   private updateNotice: RoomUpdateNotice | null = null;
   private readonly updateLimiter: RateLimiter;
@@ -164,6 +172,7 @@ export class RoomManager extends EventEmitter {
     this.transferLimiter = new RateLimiter(deps.now);
     this.chatLimiter = new RateLimiter(deps.now);
     this.chatSendLimiter = new RateLimiter(deps.now);
+    this.gameLimiter = new RateLimiter(deps.now);
     this.updateLimiter = new RateLimiter(deps.now);
     this.updateSendLimiter = new RateLimiter(deps.now);
     this.relayCap = new RateLimiter(deps.now);
@@ -230,6 +239,19 @@ export class RoomManager extends EventEmitter {
   sendFeature(module: string, commit: string, topic: string, data: unknown): void {
     if (!this.chatSendLimiter.allow('feature', CHAT_RATE, CHAT_BURST)) return;
     this.sendShared({ t: 'feature', module, commit, topic, data });
+  }
+
+  /** Sends bounded game events through the existing encrypted room transports. */
+  sendGame(packet: GamePacket): { ok: true } | { ok: false; error: 'notInRoom' | 'paused' | 'invalid' | 'rateLimited' } {
+    if (this.phase !== 'active' || !this.keys) return { ok: false, error: 'notInRoom' };
+    if (this.paused || this.roomMuted) return { ok: false, error: 'paused' };
+    const validated = validateGamePacket(packet);
+    if (!validated) return { ok: false, error: 'invalid' };
+    if (!this.chatSendLimiter.allow(validated.kind === 'sync' ? 'gameSync' : 'game',
+      validated.kind === 'sync' ? GAME_SYNC_RATE : GAME_RATE,
+      validated.kind === 'sync' ? GAME_SYNC_BURST : GAME_BURST)) return { ok: false, error: 'rateLimited' };
+    try { this.sendShared({ t: 'game', ...validated }); return { ok: true }; }
+    catch { return { ok: false, error: 'invalid' }; }
   }
 
   /** Advertises a release version, never a download address or executable content. */
@@ -390,11 +412,13 @@ export class RoomManager extends EventEmitter {
     const p = this.deps.profile();
     const members: RoomMember[] = this.phase === 'idle' ? [] : [
       { peer: this.self, name: p.name, color: p.color, path: 'lan', status: this.status(), needsUpdate: false, noEmotes: false, muted: false, self: true,
+        ...(this.deps.gameCenter ? { game: 1 as const } : {}),
         ...(this.deps.featureCommit ? { commit: this.deps.featureCommit() } : {}) },
       ...[...this.members.values()].map((m) => ({
         peer: m.peer, name: m.name, color: m.color, path: this.path(m, now), status: m.status,
         needsUpdate: m.needsUpdate, noEmotes: m.noEmotes, muted: m.muted, self: false,
         ...(m.commit ? { commit: m.commit } : {}),
+        ...(m.game ? { game: 1 as const } : {}),
       })),
     ];
     return {
@@ -488,6 +512,7 @@ export class RoomManager extends EventEmitter {
     this.aloneSince = null;
     this.chatEntries = [];
     this.chatLimiter.clear();
+    this.gameLimiter.clear();
     this.chatSendLimiter.clear();
     this.updateNotice = null;
     this.updateLimiter.clear();
@@ -571,6 +596,13 @@ export class RoomManager extends EventEmitter {
       this.emit('feature', { module: msg.module, topic: msg.topic, data: msg.data, peer: m.peer });
       return;
     }
+    if (msg.t === 'game') {
+      if (this.paused || this.roomMuted || m.muted || m.needsUpdate) return;
+      if (!this.gameLimiter.allow(`${m.peer}:${msg.kind === 'sync' ? 'sync' : 'control'}`,
+        msg.kind === 'sync' ? GAME_SYNC_RATE : GAME_RATE, msg.kind === 'sync' ? GAME_SYNC_BURST : GAME_BURST)) return;
+      this.emit('game', { gameId: msg.gameId, kind: msg.kind, data: msg.data, peer: m.peer, name: m.name });
+      return;
+    }
     // Pings and emotes pass the same gates and share one budget per member.
     if (this.paused || this.roomMuted || m.muted || m.needsUpdate) return;
     if (!this.limiter.allow(m.peer, this.deps.profile().limit)) return;
@@ -611,6 +643,7 @@ export class RoomManager extends EventEmitter {
     m.noEmotes = isOlderThan(msg.app, EMOTES_SINCE);
     m.em = msg.em;
     m.commit = msg.commit;
+    m.game = msg.game;
     // Every presence, so a hash whose assembly gave up is asked for again: EmoteTransfer skips what is already here.
     // A paused lolPing neither fetches nor serves stills; the next presence after unpausing starts prefetch again.
     if (!this.paused) this.emit('emotes', m.peer, [...m.em]);
@@ -652,6 +685,8 @@ export class RoomManager extends EventEmitter {
     this.transferLimiter.forget(m.peer);
     this.chatLimiter.forget(m.peer);
     this.chatLimiter.forget(`feature:${m.peer}`);
+    this.gameLimiter.forget(`${m.peer}:control`);
+    this.gameLimiter.forget(`${m.peer}:sync`);
     for (const p of Object.values(m.paths)) this.answered.delete(p.key);
     if (this.members.size === 0 && this.phase !== 'idle') this.aloneSince = this.deps.now();
     this.emit('memberGone', m.peer);
@@ -688,6 +723,7 @@ export class RoomManager extends EventEmitter {
   private presencePacket(): Buffer {
     const p = this.deps.profile();
     return this.seal({ t: 'presence', proto: PROTOCOL_VERSION, app: this.deps.appVersion, name: p.name, color: p.color, status: this.status(),
+      ...(this.deps.gameCenter ? { game: 1 } : {}),
       em: [...this.deps.announceEmotes()], ...(this.deps.featureCommit ? { commit: this.deps.featureCommit() } : {}) });
   }
 

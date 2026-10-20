@@ -1,5 +1,7 @@
 import type { Lang } from './i18n';
 import { imageSize, sniffImage } from './imageSniff';
+import type { GameDefinition } from './gameSurface';
+import { foonyGameUrl } from './webGame';
 
 export const MODULE_API = 1;
 export const MAX_MODULES = 8;
@@ -10,7 +12,7 @@ export const MODULE_ID = /^(?!constructor$|prototype$)[a-z][a-z0-9.-]{1,63}$/;
 export const MODULE_HASH = /^[0-9a-f]{64}$/;
 export const MODULE_KEY = /^(?!constructor$|prototype$)[a-z][a-zA-Z0-9_]{0,39}$/;
 export const MODULE_ASSET = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}\.(png|jpg|webp|wav|ogg)$/;
-export const MODULE_CAPABILITIES = ['timers', 'storage', 'overlay', 'audio', 'room.receive', 'room.send'] as const;
+export const MODULE_CAPABILITIES = ['timers', 'storage', 'overlay', 'audio', 'room.receive', 'room.send', 'games'] as const;
 export type ModuleCapability = typeof MODULE_CAPABILITIES[number];
 export type Localized = Record<Lang, string>;
 export type ModuleValue = boolean | number | string;
@@ -37,6 +39,7 @@ export interface ModuleManifest {
   settings: ModuleSetting[];
   actions: ModuleAction[];
   texts: Record<string, Localized>;
+  games?: GameDefinition[];
 }
 export interface ModuleAsset { name: string; mime: 'image/png' | 'image/jpeg' | 'image/webp' | 'audio/wav' | 'audio/ogg'; data: string }
 export interface ModulePayload { format: 1; manifest: ModuleManifest; script: string; assets: ModuleAsset[] }
@@ -131,14 +134,38 @@ export function moduleManifest(raw: unknown): ModuleManifest | null {
     if (!label || actions.some((old) => old.key === value.key)) return null;
     actions.push({ key: value.key, label });
   }
-  if (!moduleObject(raw.texts) || Object.keys(raw.texts).length > 32) return null;
+  if (!moduleObject(raw.texts) || Object.keys(raw.texts).length > 64) return null;
   const texts: Record<string, Localized> = Object.create(null) as Record<string, Localized>;
   for (const [key, value] of Object.entries(raw.texts)) {
     const text = localized(value, 300);
     if (!MODULE_KEY.test(key) || !text) return null;
     texts[key] = text;
   }
-  return { id: raw.id, api: 1, name, description, changes, capabilities: caps, settings, actions, texts };
+  const games: GameDefinition[] = [];
+  if (raw.games !== undefined) {
+    if (!caps.includes('games') || !Array.isArray(raw.games) || raw.games.length > 12) return null;
+    for (const g of raw.games) {
+      if (!moduleObject(g) || typeof g.id !== 'string' || !MODULE_KEY.test(g.id) || games.some((old) => old.id === g.id)) return null;
+      const title = localized(g.name, 60); const desc = localized(g.description, 300);
+      const web = g.web === undefined ? undefined : foonyGameUrl(g.web);
+      if (web === null) return null;
+      if (g.session !== undefined && (web || !['grid', 'draw'].includes(String(g.session)))) return null;
+      if (!title || !desc || typeof g.cover !== 'string' || !(MODULE_ASSET.test(g.cover) || /^builtin:(ping|target|caution|vision|push|allin)$/.test(g.cover))
+        || !['cyan', 'coral', 'lime'].includes(String(g.accent)) || !Array.isArray(g.stages)
+        || (web ? g.stages.length !== 0 : g.stages.length < 1 || g.stages.length > 8)) return null;
+      const stages: GameDefinition['stages'] = [];
+      for (const s of g.stages) {
+        if (!moduleObject(s) || typeof s.id !== 'string' || !MODULE_KEY.test(s.id) || stages.some((old) => old.id === s.id)) return null;
+        const label = localized(s.name, 60);
+        if (!label || !['ms', 'cps', 'level', 'points'].includes(String(s.unit))) return null;
+        stages.push({ id: s.id, name: label, unit: s.unit as GameDefinition['stages'][number]['unit'] });
+      }
+      games.push({ id: g.id, name: title, description: desc, cover: g.cover, accent: g.accent as GameDefinition['accent'], stages,
+        ...(web ? { web } : {}), ...(g.session ? { session: g.session as 'grid' | 'draw' } : {}) });
+    }
+  }
+  return { id: raw.id, api: 1, name, description, changes, capabilities: caps, settings, actions, texts,
+    ...(raw.games !== undefined ? { games } : {}) };
 }
 
 export function modulePayload(raw: unknown): ModulePayload | null {
@@ -167,6 +194,7 @@ export function modulePayload(raw: unknown): ModulePayload | null {
     }
     assets.push({ name: a.name, mime: a.mime as ModuleAsset['mime'], data: a.data });
   }
+  if (manifest.games?.some((g) => !g.cover.startsWith('builtin:') && !assets.some((a) => a.name === g.cover && a.mime.startsWith('image/')))) return null;
   return { format: 1, manifest, script: raw.script, assets };
 }
 

@@ -401,3 +401,85 @@ The app verifies branch head, tag commit, artifact size/hash, API and host compa
 workers and atomically switches script runtimes. Settings and state survive; failure retains or restores the previous
 snapshot. Input hooks and room transports never reload. Electron, native and host changes require an installer update.
 The first receiver-capable installer must be installed once. See [hot-updates.md](hot-updates.md) for the contract.
+
+## 18. Game center
+
+The game center is a separate, non-topmost renderer and narrow preload. Settings exposes its open command.
+An incoming invitation shows only a passive overlay toast, never creates a window and never accepts automatically.
+Focus suspends the native helper,
+blur/close/renderer failure releases suspension, and helper restarts reapply it. Hydration waits while the game is focused.
+The existing overlay windows remain nonfocusable and click-through. The new window is a host change requiring an installer.
+
+`game {gameId, kind, data}` and optional presence `game:1` are additive protocol-v1 extensions. The validator rebuilds
+known fields, caps participants at eight, stages at eight and results at bounded finite numbers. Old peers ignore them.
+RoomManager applies pause, room mute, member mute, protocol and replay checks with a separate 4/s, burst-eight control
+budget and 32/s, burst-48 session budget per sender. These budgets do not consume ping or chat tokens.
+Invitations are additionally limited in GameManager; declined game IDs stay ignored for that room. No new host is used.
+Invitation creation requires an active, unpaused, unmuted local room, not a discovered game-capable peer. It broadcasts
+and opens a consent lobby even while members are arriving. The game window lists every remote room member and their
+availability, installer requirement or invitation reply; member counts do not hide older peers. An organizer can turn
+a local practice/board into a fresh lobby from its invite command, discarding local play only after send succeeds.
+Busy and content-mismatched clients return bounded `decline {reason}` replies; old clients still read these as declines.
+These advisory replies do not permanently reject a later accepted join. Ordinary explicit declines still do. Receivers
+never accept automatically. Unsupported installed hosts must update once; hot scripts cannot add a missing host API.
+
+GameManager owns consent, organizer, roster, selected tests, per-player immutable first results and room-reset behavior.
+Only the organizer can begin. All players measure locally with performance.now; relay delay is not reaction time.
+Compact controls and local results repeat every three seconds to repair packet loss, stopping after ten minutes of
+results. Decline/cancel packets repeat for up to 15 seconds, never across a room switch. A player excluded from the
+started roster returns to the center. Organizer silence expires an unfinished session after 90 seconds. Existing room identity forgery limitations
+still apply, and self-reported performance is explicitly not an authenticated competition.
+
+The bundled arcade script implements five reaction trials (median, early-click penalty), twenty seeded aim targets (speed and
+accuracy, 45-second cap), a five-second pointer click burst and seeded sequence recall through eight steps (15-second
+input deadline). Focus loss restarts an active test. Each bounded heuristic score is 0–100; the composite is their
+equal-weight mean. Only full circuits get a place, with equal scores sharing a rank. Pending and departed players
+remain distinguishable. The result view shows raw metrics, all-player breakdown and a reduced-motion-aware ceremony.
+No raw mouse trace is sent and game state is not saved to disk.
+
+The installed renderer is a generic surface, not a set of game-specific branches. Optional manifest `games` entries
+define the catalog, covers, localized descriptions and stages. The `games` capability enables `feature.game` in a
+separate disposable QuickJS worker for each local stage. It returns bounded state, a validated flat UI description,
+one optional wake-up delay and an optional result. Surface input includes a random stage token, revision and a
+renderer-local monotonic timestamp. Main rejects stale revisions, undeclared controls, early timers and results for
+other stages. The renderer acknowledges a displayed frame before starting its clock; IPC and relay transit do not
+become reaction time. Window blur destroys that stage and offers a restart.
+
+Catalog and script changes travel through the existing Git bundle and atomic activation path. All game stages get
+a start-event smoke check before activation. Room invitations pin module ID, game ID and payload digest; a mismatched
+receiver gets a passive update-required notice instead of entering a different ruleset. Runtime failure disables the
+pack and uses the existing rollback path. Updates, rollback or disabled packs cancel unfinished affected matches,
+clear stale events and show a notice; completed results retain their original descriptor. The app and room stay open.
+The first host with these surface APIs needs an installer. Adding components or privileged APIs remains a host change.
+
+The catalog exposes Talent circuit and four local room games: Chinese Draw and guess, Tic-tac-toe, Four in a row
+and Chess. `tabletop` is separate from `arcade`, so changing its rules does not cancel a talent circuit. Its committed
+script is built from `tabletop.source.js` and pinned rule libraries by `npm run build:games`; a test checks exact bytes.
+The host adds validated `grid` and `draw` data surfaces, never guest DOM or privileged renderer scripts. Session input
+does not stop on blur; helper suspension still tracks real focus. Original Foony client bundles are never executed.
+Four authorized catalog icons are bundled with source hashes and separate rights notes in `tabletop-assets.md`.
+
+GameSession owns an isolated session worker per accepted game. The organizer validates actions against script state,
+assigns sequences and broadcasts accepted events. Guests replay only organizer events, buffer up to 64 out-of-order
+events, retry one pending request at a time and poll once per second. Acks deduplicate requests. A bounded 16384-event
+log repairs missed events with one targeted replay per 120 ms; each wire packet stays below the existing 1200-byte
+sealed limit. Strokes have at most 12 coordinate pairs and each canvas holds at most 400 segments. Worker queues,
+pending requests, script state and views are bounded; CPU deadlines and worker watchdogs protect main and the helper.
+The session VM allows 150 ms per call for chess move validation, still outside the Electron thread. Gameplay state
+is transient, not stored on disk. At the log limit the host cancels the match and asks for a new invitation.
+
+The first two accepted board players move; other accepted members spectate. Rules, move order, ply and round checks
+reject stale or spectator actions. chess.js validates standard chess; tic-tac-toe-minimax and connect-four supply the
+other board rule checks. Draw and guess rotates artists twice, uses Chinese choices, timed drawing and reveal phases,
+and awards each correct guess once. Guessers receive a word-free UI view, but replay state and the deterministic word
+list are not cryptographically secret. Shared room-key identity forgery also remains possible. These are casual games,
+not anti-cheat competitions. Departing board players forfeit; departing artists advance or finish the game. Organizer
+departure cancels guests; there is no host migration. Rematches require the active players' votes. Updates, rollback,
+pack disable, room changes and window close cancel workers and discard queued old events.
+
+Legacy optional `web` descriptors remain readable and sandboxed, but no current catalog entry uses them. Only a
+separately accepted legacy descriptor can open the allowlisted Foony PaintJob website. Current local games introduce
+no network hosts and require no remote page, authentication, cookies or backend.
+
+Task categories were researched from Human Benchmark's reaction, aim and sequence test pages. The app does not
+embed those pages or use their statistics; task content and score curves are local and are not population norms.

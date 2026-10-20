@@ -145,6 +145,7 @@ export interface SettingsApi {
   retryInternet(): Promise<void>;
   /** Opens the desktop room chat input. */
   openChat(): Promise<void>;
+  openGameCenter(): Promise<void>;
   /** Sends only a version notice; no executable bytes or arbitrary download URLs travel through the room. */
   pushRoomUpdate(): Promise<RoomUpdateResult>;
   /** Checks the configured release source only after the receiver chooses to do so. */

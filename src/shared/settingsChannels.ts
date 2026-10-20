@@ -35,6 +35,7 @@ export const SETTINGS_CH = {
   roomCopy: 'room:copyCode',
   roomRetryInternet: 'room:retryInternet',
   roomOpenChat: 'room:openChat',
+  roomOpenGame: 'room:openGame',
   roomPushUpdate: 'room:pushUpdate',
   roomCheckUpdate: 'room:checkUpdate',
   updateGet: 'update:get',

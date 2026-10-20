@@ -92,6 +92,54 @@ and keeps its focus. Sound uses the ping volume and mute settings, on the primar
 stop reminders; resuming starts a fresh interval without catching up. An active wheel or chat composer defers a due reminder.
 Reminders stay on this computer, never go to the room, and collect or send no health data.
 
+## Game center
+
+Open **Settings → Game center** to choose Talent circuit, Draw and guess, Tic-tac-toe, Four in a row or Chess.
+Talent circuit has solo practice and room invitation controls. Its reaction, aim, click-speed and memory tasks
+remain together; they are not separate games in the catalog.
+Friends accept or decline without losing focus. The organizer starts after at least one friend joins.
+Invite room is available as soon as your room is active, including from local practice. It opens a waiting lobby;
+room-member statuses show who needs an app update, is paused or muted, has different content, or has accepted.
+All players need a build containing the game center; older apps keep their normal pings and ignore game messages.
+
+The circuit has five reaction trials, 20 FPS click targets, a five-second click-speed test and sequence memory
+up to eight lights. Aim layouts and memory sequences use the same room seed. A test interrupted by focus loss
+restarts rather than counting time spent in another window. Input hooks stay suspended only while the game window
+has focus; click-through desktop overlays do not become interactive.
+
+Results include a 0–100 entertainment score, complete-player rankings, each player's test metrics and an animated
+award ceremony. Reaction uses the median and penalizes early clicks; aim combines speed and accuracy; click speed
+and memory have bounded scores. Scores are not scientific talent measurements, calibrated percentiles or anti-cheat
+records. Hardware, practice and a client's self-reported results affect comparisons. Incomplete circuits are not ranked.
+
+Game invitations, lobby control and aggregate results use the existing encrypted LAN and relay connections.
+No new host is contacted, talent-test mouse movements stay local, and results are not written to disk. Closing the window
+or leaving the room ends participation.
+
+The four room games run locally, not inside a Foony website. Draw and guess has a Chinese word list, three choices,
+80-second drawing rounds, brushes, colors, eraser, undo, clear, guesses, scores and two drawing turns per player.
+Board games assign the first two accepted players to the board; other accepted players spectate. Chess validates
+moves, castling, en passant, promotion, checkmate and draws with chess.js. Board games also support same-device play,
+resignation and consensual rematches. The organizer leaving ends a match; there is no host migration.
+
+Privacy: drawing strokes, guesses and board moves are sent through existing encrypted room transports. No Foony
+connection or account is needed for these catalog games; LAN-only play works without relays. Actions are bounded,
+ordered by the organizer and replayed after packet loss. The shared room key and deterministic word list do not
+provide anti-cheat secrecy. Normal guesser views hide the word, but a modified client can inspect it. Do not use
+these games for secret data or competitive prizes.
+
+Four catalog icons are copied from the authorized local Foony snapshot. These local implementations are not a
+one-to-one migration of Foony's original source or backend. Media retains its original rights, not lolPing's MIT
+license. See [the import notes](docs/foony-import.md) and [asset provenance](docs/tabletop-assets.md). The bulk snapshot
+stays ignored in `vendor/foony/`; the app never executes its remote client bundles. Legacy web descriptors remain
+readable but none are included in the current catalog.
+
+The game catalog, bilingual names, stage definitions, declarative interfaces and isolated rule scripts ship in the
+existing Git hot-update bundle. Install this game-capable host once; later compatible game changes appear without
+restarting the app or reconnecting the room. Players need the same game-pack content hash to join a match.
+An update, rollback or disabled game pack ends any unfinished match using changed content; finished results stay visible.
+New native APIs, renderer components or Electron changes still need an installer. See [the game script contract](docs/hot-updates.md#game-scripts).
+
 ## Updates
 
 lolPing checks GitHub for a new version 10 seconds after it starts, then every 6 hours. When there is one, you get a notice on screen, and the tray menu and **Settings → App → About** offer **Update**. It asks first: nothing downloads until you click.

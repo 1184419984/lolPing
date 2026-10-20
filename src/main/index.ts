@@ -22,6 +22,12 @@ import { isFile } from './fileState';
 import { InputBridge } from './inputBridge';
 import { HotManager } from './hotManager';
 import { HotSource } from './hotSource';
+import { GameManager } from './gameManager';
+import { GameCenterWindow } from './gameCenterWindow';
+import { GameRuntime } from './gameRuntime';
+import { GameSession } from './gameSession';
+import { WebGameWindow } from './webGameWindow';
+import type { GameEntry, GameRef } from '../shared/gameSurface';
 import { ModuleAssets } from './moduleAssets';
 import { HydrationReminder } from './hydrationReminder';
 import { verifyHotPublisher } from './hotGit';
@@ -109,6 +115,7 @@ async function start(): Promise<void> {
   let quitting = false; // read by pushStatus: once true, the tray and overlays are gone
   let capturing = false; // the settings page is listening for a key, so the helper must stay suspended
   let chatEditing = false;
+  let gameFocused = false;
 
   const overlays = new OverlayManager(
     overlaySettings(settings),
@@ -121,6 +128,8 @@ async function start(): Promise<void> {
   );
   overlays.start();
   let hot: HotManager | null = null;
+  let game: GameManager | null = null;
+  let gameWindow: GameCenterWindow | null = null;
   let hotRoomCode: string | null = null;
   const fallbackHydration = new HydrationReminder(Date.now);
   let locked = false;
@@ -134,9 +143,10 @@ async function start(): Promise<void> {
   };
   syncHydration();
   const hydrationTimer = setInterval(() => {
+    game?.tick();
     const script = hot?.state().modules.find((m) => m.manifest.id === 'hydration');
     if (script && script.phase !== 'error') { fallbackHydration.reset(); return; }
-    if (fallbackHydration.tick(!capturing && !chatEditing && !overlays.wheelOpen)) {
+    if (fallbackHydration.tick(!capturing && !chatEditing && !gameFocused && !overlays.wheelOpen)) {
       overlays.remindHydration(text().hydrationTitle, settings.hydrationDurationS);
     }
   }, 1000);
@@ -193,13 +203,99 @@ async function start(): Promise<void> {
     },
     announceEmotes: () => announcedEmoteHashes(settings.emoteWheel, settings.clickEmoteId),
     featureCommit: () => hot?.commit ?? __BUILD_IDENTITY__.commit,
+    gameCenter: true,
+  });
+  const gameManager = new GameManager({
+    catalog: () => (hot?.games() ?? []).flatMap(({ payload, digest }) => {
+      const assets = moduleAssets.register(payload);
+      return (payload.manifest.games ?? []).map((definition): GameEntry => ({ module: payload.manifest.id,
+        game: definition.id, digest, definition, assets }));
+    }),
+    room: () => room.state(), self: () => room.self, name: () => settings.displayName,
+    lang: () => resolveLang(settings.language, app.getLocale()), platform: PLATFORM,
+    enabled: () => enabled && !locked && !asleep,
+    id: () => [...randomBytes(8)].map((byte) => byte.toString(16).padStart(2, '0')).join(''),
+    now: Date.now, send: (packet) => room.sendGame(packet),
+  });
+  game = gameManager;
+  const focusedGames = new Set<'center' | 'web'>();
+  const gameFocusChanged = (surface: 'center' | 'web', on: boolean): void => {
+    if (on) focusedGames.add(surface); else focusedGames.delete(surface);
+    gameFocused = focusedGames.size > 0;
+    if (on) { overlays.cancelWheel(); overlays.clearFeatures(); overlays.clearHydration(); }
+    bridge.send({ type: 'suspend', on: capturing || chatEditing || gameFocused });
+  };
+  const webGame = new WebGameWindow({ title: () => text().gamePaintjob,
+    onFocus: (on) => gameFocusChanged('web', on),
+    onError: () => { if (!quitting) overlays.toast(text().gamePaintjob, text().gameWebError); } });
+  const gameRuntime = new GameRuntime({
+    payload: (ref) => hot?.games().find((m) => m.payload.manifest.id === ref.module && m.digest === ref.digest)?.payload ?? null,
+    context: () => ({ now: Date.now(), lang: resolveLang(settings.language, app.getLocale()), settings: {},
+      paused: !enabled || locked || asleep, busy: false, room: room.state().phase === 'active', texts: {} }),
+    runner: () => GameRuntime.worker(join(__dirname, 'moduleWorker.js')),
+    submit: (result) => { gameManager.submit(result); },
+    failed: (ref: GameRef) => {
+      gameManager.cancel();
+      overlays.toast(text().gameTitle, text().gameErrors.runtime);
+      void hot?.gameFailed(ref.module, ref.digest);
+    },
+  });
+  const gameSession = new GameSession({
+    payload: (ref) => hot?.games().find((m) => m.payload.manifest.id === ref.module && m.digest === ref.digest)?.payload ?? null,
+    runner: () => GameRuntime.worker(join(__dirname, 'moduleWorker.js')),
+    context: () => ({ now: Date.now(), lang: resolveLang(settings.language, app.getLocale()), settings: {},
+      paused: !enabled || locked || asleep, busy: false, room: room.state().phase === 'active', texts: {} }),
+    send: (data) => gameManager.sendSession(data), now: Date.now,
+    failed: (ref) => { gameManager.cancel(); void hot?.gameFailed(ref.module, ref.digest); },
+  });
+  gameManager.on('sync', (peer, data) => gameSession.receive(peer, data));
+  gameSession.on('limit', () => { gameManager.cancel(); overlays.toast(text().gameTitle, text().gameSessionLimit); });
+  const gameSessionTimer = setInterval(() => { if (enabled && !locked && !asleep) gameSession.tick(); }, 120);
+  let gameStage = '';
+  gameManager.on('state', (s) => {
+    gameSession.sync(s);
+    const key = s.phase === 'playing' ? `${s.gameId}:${s.currentTest}` : '';
+    if (key !== gameStage) { gameStage = key; void gameRuntime.stop(); }
+    if (s.phase !== 'playing' || !s.webUrl) webGame.close();
+  });
+  gameWindow = new GameCenterWindow({
+    state: () => gameManager.state(),
+    onState: (cb) => { gameManager.on('state', cb); return () => { gameManager.off('state', cb); }; },
+    start: (tests, multiplayer) => gameManager.start(tests, multiplayer),
+    accept: () => gameManager.accept(), decline: () => gameManager.decline(), begin: () => gameManager.begin(),
+    cancel: () => gameManager.cancel(),
+    openStage: (now) => {
+      const s = gameManager.state();
+      return s.phase === 'playing' && s.selection && s.currentTest && typeof now === 'number'
+        ? gameRuntime.open(s.selection, s.currentTest, s.seed, now) : Promise.resolve(null);
+    },
+    input: (raw) => gameRuntime.input(raw), stopStage: () => gameRuntime.stop(),
+    openWeb: () => {
+      const s = gameManager.state();
+      return s.phase === 'playing' && s.selection?.definition.web && s.webUrl
+        ? webGame.open(s.webUrl) : Promise.resolve({ ok: false, error: 'invalid' });
+    },
+    inviteWeb: () => gameManager.inviteWeb(webGame.roomUrl()),
+    session: () => gameSession.frame(), sessionAction: (raw) => enabled && !locked && !asleep && gameSession.action(raw),
+    onSession: (cb) => { gameSession.on('frame', cb); return () => { gameSession.off('frame', cb); }; },
+    title: () => text().gameTitle,
+    onFocus: (on) => gameFocusChanged('center', on),
+  });
+  game.on('invitation', (name: string) => {
+    if (quitting) return;
+    overlays.toast(text().gameTitle, text().gameInvited(name));
+  });
+  let incompatibleGameAt = 0;
+  game.on('incompatible', () => {
+    if (quitting || Date.now() - incompatibleGameAt < 15_000) return;
+    incompatibleGameAt = Date.now(); overlays.toast(text().gameTitle, text().gameErrors.incompatible);
   });
   const hotSource = new HotSource(fetch);
   hot = new HotManager({
     dir: join(settingsDir(), 'hot-features'), worker: join(__dirname, 'moduleWorker.js'),
     identity: __BUILD_IDENTITY__, builtin: __BUILTIN_FEATURES__, source: hotSource,
     context: () => ({ now: Date.now(), lang: resolveLang(settings.language, app.getLocale()),
-      paused: !enabled || locked || asleep, busy: capturing || chatEditing || overlays.wheelOpen,
+      paused: !enabled || locked || asleep, busy: capturing || chatEditing || gameFocused || overlays.wheelOpen,
       room: room.state().phase === 'active', texts: { hydrationTitle: {
         en: strings('en', PLATFORM).hydrationTitle, 'zh-CN': strings('zh-CN', PLATFORM).hydrationTitle,
       } },
@@ -213,10 +309,10 @@ async function start(): Promise<void> {
         assets = { 'builtin:hydration': `../textures/${HYDRATION_TEXTURE}.png`, ...moduleAssets.register(payload) };
         moduleUrls.set(payload, assets);
       } else moduleAssets.register(payload);
-      if (command.op === 'show' && !capturing && !chatEditing && !overlays.wheelOpen) {
+      if (command.op === 'show' && !capturing && !chatEditing && !gameFocused && !overlays.wheelOpen) {
         overlays.showFeature({ module, generation: commit, lang: resolveLang(settings.language, app.getLocale()), scene: command.scene, assets });
       } else if (command.op === 'clear') overlays.clearFeatures(module, command.key);
-      else if (command.op === 'sound' && !capturing && !chatEditing && !overlays.wheelOpen) {
+      else if (command.op === 'sound' && !capturing && !chatEditing && !gameFocused && !overlays.wheelOpen) {
         overlays.featureSound(command.asset === 'builtin:Base' ? '../sounds/Base.wav' : assets[command.asset], command.volume);
       }
       else if (command.op === 'publish') room.sendFeature(module, commit, command.topic, command.data);
@@ -238,22 +334,26 @@ async function start(): Promise<void> {
     hot?.offer(offer); if (!quitting) overlays.toast(text().hotTitle, text().hotReceived(offer.name, offer.commit.slice(0, 12)));
   });
   room.on('feature', (data: unknown) => { void hot?.roomEvent(data); });
+  room.on('game', (data: unknown) => game?.receive(data));
   room.on('chatReset', () => hot?.dismiss());
+  room.on('chatReset', () => game?.cancel());
   room.on('state', () => {
     const code = room.state().code;
     if (code !== hotRoomCode) { hotRoomCode = code; hot?.cancel(); }
+    game?.refresh();
   });
   let announcedCommit = __BUILD_IDENTITY__.commit;
   hot.on('state', (s: HotState) => {
     if (quitting) return;
     sendToSettings(SETTINGS_CH.hotState, s);
+    gameManager.catalogChanged();
     if (s.commit !== announcedCommit) { announcedCommit = s.commit; room.profileChanged(); }
   });
   await hot.start().catch((error: unknown) => {
     console.warn('[hot]', error);
     overlays.toast(text().hotTitle, text().hotErrors.runtime);
   });
-  const syncInputSuspend = (): void => bridge.send({ type: 'suspend', on: capturing || chatEditing });
+  const syncInputSuspend = (): void => bridge.send({ type: 'suspend', on: capturing || chatEditing || gameFocused });
   const chat = new ChatWindow({
     state: () => ({
       messages: room.chatHistory(), roomCode: room.state().code,
@@ -465,7 +565,7 @@ async function start(): Promise<void> {
     if (ev.type === 'toggled') setEnabled(ev.enabled);
     else if (ev.type === 'ready') {
       // A restarted helper starts unsuspended: re-apply an active key capture.
-      if (capturing || chatEditing) syncInputSuspend();
+      if (capturing || chatEditing || gameFocused) syncInputSuspend();
     } else if (ev.type === 'error') console.warn('[helper]', ev.code ?? '', ev.message);
     else overlays.handle(ev);
   });
@@ -491,6 +591,7 @@ async function start(): Promise<void> {
     overlays.updateSettings(overlaySettings(s));
     settingsWindow()?.webContents.send(SETTINGS_CH.changed, s);
     chat.refresh();
+    game?.refresh();
     if (s.language !== previous.language) tray.setText(text());
     if (s.displayName !== previous.displayName || s.tagColor !== previous.tagColor) room.profileChanged();
     if (s.autoUpdateCheck !== previous.autoUpdateCheck) updater?.setAutoCheck(s.autoUpdateCheck);
@@ -534,6 +635,7 @@ async function start(): Promise<void> {
     about,
     retryHelper: startHelper,
     openChat: () => chat.open(),
+    openGameCenter: () => gameWindow?.open(),
     setCapturing: (on) => {
       capturing = on;
       syncInputSuspend();
@@ -596,11 +698,15 @@ async function start(): Promise<void> {
     clearInterval(hydrationTimer);
     updater?.stop(); // aborts a download and drops a check in flight; an install that is quitting the app is left alone
     chat.destroy();
+    game?.cancel();
+    gameWindow?.destroy();
+    webGame.destroy();
     room.quit(); // says bye, so the others see "left" instead of waiting for a timeout
     transfer.stop();
     stopWaitingForAccess();
     tray.destroy();
     overlays.destroy();
-    void Promise.allSettled([bridge.stop(), store.flush(), lan.whenClosed(), relay.whenClosed(), hot?.stop()]).then(() => app.exit(0));
+    clearInterval(gameSessionTimer);
+    void Promise.allSettled([bridge.stop(), store.flush(), lan.whenClosed(), relay.whenClosed(), hot?.stop(), gameRuntime.stop(), gameSession.stop()]).then(() => app.exit(0));
   });
 }

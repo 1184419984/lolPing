@@ -28,7 +28,7 @@ installer update is required. Put new feature media in the feature bundle, not i
 
 The catalog has a manifest for each script named `src/features/<id>.js`. Modules have stable IDs, bilingual
 names, settings, text and actions, and explicit capabilities: `timers`, `storage`, `overlay`, `audio`, `room.receive`
-and `room.send`. New schema fields default through `moduleValues`. No module release number is needed.
+`room.send` and `games`. New schema fields default through `moduleValues`. No module release number is needed.
 Optional media lives in `src/features/assets/<id>/` as PNG, JPG, WebP, WAV or OGG and is bundled by filename.
 
 Each script defines `globalThis.feature.handle(input)` and returns `{commands, state}` synchronously.
@@ -80,3 +80,81 @@ each module gets 4 overlay commands/s (burst 8), 1 sound/s (burst 2) and 1 room 
 Excess outputs are dropped, not queued. Progress events do not trigger room presence announcements.
 These checks do not authenticate room peer names: the existing shared room key still permits forged identities.
 Trust is in the configured Git repository and the recipient's verification, not the person sending the notice.
+
+## Game scripts
+
+`src/features/catalog.ts` includes the `arcade` and `tabletop` modules. Their optional `games` arrays define up to 12 games per module.
+Each game has a stable `id`, bilingual `name` and `description`, a local `cover`, an `accent` token and one to eight
+`stages`. Stages have stable IDs, bilingual names and metric units (`ms`, `cps`, `level`, `points`). Covers use bundled
+module image filenames or the host's named builtin ping assets. User-facing text still belongs in `i18n.ts` and enters
+the bundle through manifest `texts`. No additional game release number is maintained.
+
+The catalog includes Talent circuit and four local room games. Legacy `web` descriptors remain readable, restricted
+to the existing sandboxed Foony PaintJob host, but are not included in the current catalog. Local games never load
+downloaded browser bundles or contact Foony. Their rules and media are part of the Git-verified bundle.
+
+Modules declaring `games` also implement `feature.game({event, data, context, state})`. The game worker is separate
+from the module's passive reminder worker. Each stage starts with fresh transient state and receives:
+
+- `start`: `data` contains `game`, `stage`, the shared room `seed` and renderer-local `now`.
+- `shown`: the frame has been rendered; start its local clock using `data.now`. Return the same view, with updated
+  state and a wake-up delay. The host does not repaint in response to this acknowledgement.
+- `input`: `data.control` identifies an enabled button, tile, target or declared background action, with `data.now`.
+- `timer`: one scheduled wake-up for the current displayed revision, with `data.now`.
+
+Return `{state, view, wakeAfter, result?}` synchronously. `state` is bounded to 16 KiB and is never persisted.
+`wakeAfter` is null or 16–60000 milliseconds. Return a complete view after an input or timer; the host clears the old
+timer, renders the revision and sends `shown`. Counter/text-only revisions keep their displayed controls and clock;
+they update in place without another acknowledgement, so rapid clicks do not wait for repaint. Only schedule from
+`shown` when a delay must follow an actual visible
+frame. Scripts cannot call host timers, load URLs, execute renderer code or access files.
+
+`view` has `layout` (`stack`, `pad`, `arena`, `grid`), `tone` (`neutral`, `accent`, `danger`, `success`), `columns`
+(1–8), optional `backgroundAction` and 1–64 nodes. Every node has a unique stable `id` and a `type`: `text`, `button`,
+`target`, `tile`, `image` or `bar`. Optional fields are bounded `text`, `tone`, `disabled`, normalized target `x`/`y`,
+bar `value` (0–1) or a declared image `asset`. There is no HTML, CSS, arbitrary URL or event-handler field. Unknown
+attributes are discarded. Target centers stay within safe board margins; component dimensions belong to the host.
+Button labels are also accessible names. Interactive game input is pointer-based in this host.
+
+`result`, when present after an input or timer, is `{test, score, metric, accuracy}`. `test` must match the active stage,
+score is 0–100, metric is 0–60000 and accuracy is 0–1. Main accepts the first result per player/stage. Ranking uses
+the mean of completed stage scores and excludes incomplete matches. These self-reported scores are not anti-cheat.
+
+To add a compatible game: add its descriptor and translations, implement its stage logic in the module script, and
+test its views and results. Push the Git commit and wait for Hot Features, then offer the update through the room.
+Receivers explicitly accept as usual. The catalog refreshes in the existing window. Invitations include the exact
+module payload digest, so different script/config generations cannot join one match. An unfinished affected match
+is cancelled on update, rollback or disable instead of mixing rules; completed results keep their original metadata.
+Activation smoke-checks every stage. Later game worker failures disable that pack and request the existing rollback.
+
+For shared games, a descriptor adds `session: 'grid' | 'draw'` and implements
+`feature.session({event, data, context, state})`. `start` supplies game ID, pinned seed, ordered peers, host, local self
+and a zero initial time. Only the organizer creates clock events; all accepted action events carry authoritative
+sequence, actor, request ID and time. Return `{state, view, accepted}`. State is at most 128 KiB and remains transient.
+Views are rebuilt from a bounded grid/drawing schema: cells, legal source squares, status, moves, choices, word/hint,
+deadline, at most 400 short strokes, 24 messages and eight scores. The renderer sees this view, not raw script state.
+Actions are fixed move, stroke, guess, word choice, clear, undo, resign, next and rematch commands. Clock and departure
+commands are main-only. Each action carries the current round; moves also carry the current ply. Scripts reject invalid
+actors and stale actions. Peers retry requests and replay missing ordered events; no huge snapshots are sent.
+
+`tabletop.source.js` imports exactly pinned chess.js, connect-four and tic-tac-toe-minimax rule code. Run
+`npm run build:games` after editing it and commit both the source and generated `tabletop.js`. The generated file is
+the exact Git blob checked by the existing publisher/download verifier. Tests rebuild and compare it byte-for-byte.
+Its word list and localized strings come from `i18n.ts`; Chinese drawing words stay the same for English and Chinese
+clients. Activation smoke-checks session starts as well as local stages. Rule, word-list, media and compatible view-data
+changes then hot-update without restart. Affected active matches end before the new generation starts.
+
+The first grid/canvas/session-capable host requires an installer update on every participant. New surface components,
+arbitrary React pages, keyboard hooks, permissions or privileged APIs are still installer-level changes. Arbitrary
+interfaces cannot be added just by downloading JS. Session replay is for casual rooms, not anti-cheat: the shared key
+and deterministic word selection do not hide answers from modified clients. The organizer leaving ends the match.
+
+After `npm run build`, run `npx electron tools/verify-games.mjs` for an isolated Electron run through the talent circuit
+and all five catalog entries at three sizes, using the real game manager, preload and QuickJS workers. It checks
+visible canvas pixels, plays board moves and completes talent results. It uses a virtual renderer clock and no
+external room, settings or input hooks. Reports and screenshots go into ignored `out/verification/`. This does not
+replace a manual real-app focus/input check or a two-machine LAN/relay check.
+
+`npx electron tools/verify-web-game.mjs` is an optional legacy live-network check of the sandboxed Foony window. It
+uses a separate test profile, opens the Chinese game homepage without joining a room, checks that application bridges
+are absent, and writes its screenshot and page report under `out/verification`. It does not play a multiplayer round.

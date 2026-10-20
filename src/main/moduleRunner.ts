@@ -1,6 +1,8 @@
 import { Worker } from 'node:worker_threads';
 import { moduleObject, type ModuleContext, type ModulePayload } from '../shared/modules';
 import type { VmReply } from './moduleVm';
+import type { GameReply } from '../shared/gameSurface';
+import type { SessionReply } from '../shared/gameSession';
 
 /** A hung guest can be terminated without blocking Electron or the native input helper. */
 export class ModuleRunner {
@@ -28,6 +30,11 @@ export class ModuleRunner {
     if (!moduleObject(reply) || !Array.isArray(reply.commands)) throw new Error('Invalid worker reply');
     return reply as unknown as VmReply;
   }
+  async game(event: string, data: unknown, context: ModuleContext, state: unknown): Promise<GameReply> {
+    const reply = await this.request({ op: 'game', event, data, context, state }, 1000);
+    if (!moduleObject(reply)) throw new Error('Invalid game reply');
+    return reply as unknown as GameReply;
+  }
   private request(body: Record<string, unknown>, timeout: number): Promise<unknown> {
     if (this.closed || this.pending.size >= 1) return Promise.reject(new Error('Worker unavailable'));
     const id = ++this.seq;
@@ -37,6 +44,11 @@ export class ModuleRunner {
       try { this.worker.postMessage({ ...body, id }); }
       catch { this.fail(); }
     });
+  }
+  async session(event: string, data: unknown, context: ModuleContext, state: unknown): Promise<SessionReply> {
+    const reply = await this.request({ op: 'session', event, data, context, state }, 1000);
+    if (!moduleObject(reply)) throw new Error('Invalid session reply');
+    return reply as unknown as SessionReply;
   }
   private fail(): void {
     this.closed = true;

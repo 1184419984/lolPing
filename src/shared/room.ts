@@ -14,6 +14,7 @@ export type RoomUpdateResult =
   | { ok: false; error: 'notInRoom' | 'paused' | 'noPeers' | 'rateLimited' | 'unavailable' | 'failed' };
 
 export interface RoomMember {
+  game?: 1;
   commit?: string;
   peer: string;
   name: string;

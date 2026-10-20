@@ -14,7 +14,7 @@ import { RateLimiter } from './rateLimiter';
 
 interface ActiveModule {
   payload: ModulePayload;
-  runner: Pick<ModuleRunner, 'handle' | 'stop'>;
+  runner: Pick<ModuleRunner, 'handle' | 'stop'> & Partial<Pick<ModuleRunner, 'game' | 'session'>>;
   settings: ModuleValues;
   state: unknown;
   enabled: boolean;
@@ -28,7 +28,7 @@ interface HotDeps {
   identity: BuildIdentity;
   builtin: HotBundle;
   source: Pick<HotSource, 'latest' | 'newer' | 'download'>;
-  runner?(payload: ModulePayload): Promise<Pick<ModuleRunner, 'handle' | 'stop'>>;
+  runner?(payload: ModulePayload): Promise<ActiveModule['runner']>;
   context(): Omit<ModuleContext, 'settings'>;
   hydration(): ModuleValues;
   command(module: string, commit: string, command: ModuleCommand, payload: ModulePayload): void;
@@ -61,6 +61,17 @@ export class HotManager extends EventEmitter {
   private stopPromise: Promise<void> | null = null;
   private rollbackScheduled = false;
   get commit(): string { return this.current.commit; }
+
+  games(): { payload: ModulePayload; digest: string }[] {
+    return [...this.active.values()].filter((m) => m.enabled && !m.failed && m.payload.manifest.games?.length)
+      .map((m) => ({ payload: m.payload, digest: m.digest }));
+  }
+
+  async gameFailed(id: string, digest: string): Promise<void> {
+    const m = this.active.get(id);
+    if (!m || m.digest !== digest || m.failed || this.closed) return;
+    await this.failed(m);
+  }
 
   constructor(private readonly deps: HotDeps) {
     super();
@@ -311,17 +322,20 @@ export class HotManager extends EventEmitter {
           this.deps.command(id, this.current.commit, command, m.payload);
         }
       } catch {
-        m.failed = true; this.deps.clear(); await m.runner.stop(); this.error = 'runtime'; this.emitState();
-        if (this.previous && !this.rollbackScheduled) {
-          this.rollbackScheduled = true;
-          setImmediate(() => {
-            this.rollbackScheduled = false;
-            if (this.controller) { this.controller.abort(); void this.completed?.then(() => this.rollback()); }
-            else void this.rollback();
-          });
-          return;
-        }
+        await this.failed(m); return;
       }
+    }
+  }
+
+  private async failed(m: ActiveModule): Promise<void> {
+    m.failed = true; this.deps.clear(); await m.runner.stop(); this.error = 'runtime'; this.emitState();
+    if (this.previous && !this.rollbackScheduled) {
+      this.rollbackScheduled = true;
+      setImmediate(() => {
+        this.rollbackScheduled = false;
+        if (this.controller) { this.controller.abort(); void this.completed?.then(() => this.rollback()); }
+        else void this.rollback();
+      });
     }
   }
 
@@ -341,6 +355,19 @@ export class HotManager extends EventEmitter {
         const reply = await runner.handle('activate', null, { ...context,
           texts: { ...context.texts, ...payload.manifest.texts }, settings: this.values(m) }, m.state);
         m.state = reply.state;
+        for (const definition of payload.manifest.games ?? []) for (const stage of definition.stages) {
+          if (definition.session) {
+            if (!runner.session) throw new Error('Missing session runtime');
+            await runner.session('start', { game: definition.id, peers: ['aaaaaaaaaaaaaaaa', 'bbbbbbbbbbbbbbbb'],
+              self: 'aaaaaaaaaaaaaaaa', host: 'aaaaaaaaaaaaaaaa', seed: 42, now: 0 },
+            { ...context, texts: payload.manifest.texts, settings: this.values(m) }, null);
+            continue;
+          }
+          if (!runner.game) throw new Error('Missing game runtime');
+          const game = await runner.game('start', { game: definition.id, stage: stage.id, seed: 42, now: 0 },
+            { ...context, texts: payload.manifest.texts, settings: this.values(m) }, null);
+          if (game.result) throw new Error('Game completed during activation');
+        }
       }
       return staged;
     } catch { await this.stopModules(staged); throw new Error('runtime'); }

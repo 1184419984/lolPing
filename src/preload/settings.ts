@@ -46,6 +46,7 @@ const api: SettingsApi = {
   copyRoomCode: () => ipcRenderer.invoke(SETTINGS_CH.roomCopy),
   retryInternet: () => ipcRenderer.invoke(SETTINGS_CH.roomRetryInternet),
   openChat: () => ipcRenderer.invoke(SETTINGS_CH.roomOpenChat),
+  openGameCenter: () => ipcRenderer.invoke(SETTINGS_CH.roomOpenGame),
   pushRoomUpdate: () => ipcRenderer.invoke(SETTINGS_CH.roomPushUpdate),
   checkRoomUpdate: () => ipcRenderer.invoke(SETTINGS_CH.roomCheckUpdate),
   onShowSection: (cb) => subscribe(SETTINGS_CH.showSection, cb),

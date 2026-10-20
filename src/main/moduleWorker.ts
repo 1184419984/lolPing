@@ -14,12 +14,14 @@ port?.on('message', (raw: unknown) => {
         if (!payload || vm) throw new Error('Invalid load');
         vm = await ModuleVm.create(payload);
         port.postMessage({ id: raw.id, ok: true });
-      } else if (raw.op === 'event' && vm && typeof raw.event === 'string' && moduleObject(raw.context)
+      } else if ((raw.op === 'event' || raw.op === 'game' || raw.op === 'session') && vm && typeof raw.event === 'string' && moduleObject(raw.context)
         && typeof raw.context.now === 'number' && Number.isFinite(raw.context.now)
         && (raw.context.lang === 'en' || raw.context.lang === 'zh-CN') && moduleObject(raw.context.settings)
         && typeof raw.context.paused === 'boolean' && typeof raw.context.busy === 'boolean'
         && typeof raw.context.room === 'boolean' && moduleObject(raw.context.texts)) {
-        const reply = vm.handle(raw.event, raw.data, raw.context as unknown as ModuleContext, raw.state);
+        const reply = raw.op === 'session' ? vm.session(raw.event, raw.data, raw.context as unknown as ModuleContext, raw.state)
+          : raw.op === 'game' ? vm.game(raw.event, raw.data, raw.context as unknown as ModuleContext, raw.state)
+          : vm.handle(raw.event, raw.data, raw.context as unknown as ModuleContext, raw.state);
         port.postMessage({ id: raw.id, ok: true, reply });
       } else throw new Error('Invalid request');
     } catch {

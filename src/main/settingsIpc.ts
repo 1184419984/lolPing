@@ -32,6 +32,7 @@ export interface SettingsIpcDeps {
   retryHelper(): void;
   setCapturing(on: boolean): void;
   openChat(): void;
+  openGameCenter(): void;
   openAccessibility(): void;
   /** Strings in the app's current language. */
   text(): Strings;
@@ -156,6 +157,7 @@ export function registerSettingsIpc(d: SettingsIpcDeps): void {
   ipcMain.handle(SETTINGS_CH.roomCopy, () => d.room.copyCode());
   ipcMain.handle(SETTINGS_CH.roomRetryInternet, () => d.room.retryInternet());
   ipcMain.handle(SETTINGS_CH.roomOpenChat, () => d.openChat());
+  ipcMain.handle(SETTINGS_CH.roomOpenGame, () => d.openGameCenter());
   ipcMain.handle(SETTINGS_CH.roomPushUpdate, () => d.pushRoomUpdate());
   ipcMain.handle(SETTINGS_CH.roomCheckUpdate, () => d.checkRoomUpdate());
 

@@ -1,11 +1,12 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { build } from 'esbuild';
 import { describe, expect, it } from 'vitest';
 import { hotHostBlobs, type HotGitBlob } from '../../src/shared/hotGitTree';
+import { FEATURE_CATALOG } from '../../src/features/catalog';
 
 describe('hotBuild', () => {
   it('matches Git tree identity and bundles committed bytes regardless of checkout line endings', async () => {
@@ -27,7 +28,12 @@ describe('hotBuild', () => {
       await writeFile(join(checkout, 'package.json'), '{"name":"fixture"}\n');
       await writeFile(join(checkout, 'src', 'main', 'index.ts'), 'export const host = 1;\n');
       const script = 'globalThis.feature = {};\r\n';
-      await writeFile(join(checkout, 'src', 'features', 'hydration.js'), script);
+      for (const module of FEATURE_CATALOG) await writeFile(join(checkout, 'src', 'features', `${module.id}.js`), script);
+      const assets = join(checkout, 'src', 'features', 'assets', 'tabletop');
+      await mkdir(assets, { recursive: true });
+      for (const name of ['paintjob', 'tictactoe', 'connectfour', 'chess']) {
+        await writeFile(join(assets, `${name}.webp`), await readFile(`src/features/assets/tabletop/${name}.webp`));
+      }
       git('add', '.'); git('commit', '-m', 'test: initial');
       const blobs: HotGitBlob[] = git('ls-tree', '-r', 'HEAD').split('\n').map((line) => {
         const [metadata, path] = line.split('\t'); return { path, sha: metadata.split(' ')[2] };
@@ -35,7 +41,7 @@ describe('hotBuild', () => {
       const expected = createHash('sha256').update(hotHostBlobs(blobs)).digest('hex');
       const clean = run();
       expect(clean.identity).toEqual({ commit: git('rev-parse', 'HEAD'), host: expected, dirty: false });
-      expect(JSON.parse(clean.bundle)).toMatchObject({ modules: [{ script: script.replace(/\r\n/g, '\n') }] });
+      expect(JSON.parse(clean.bundle)).toMatchObject({ modules: FEATURE_CATALOG.map(() => ({ script: script.replace(/\r\n/g, '\n') })) });
       await writeFile(join(checkout, 'src', 'features', 'hydration.js'), 'globalThis.feature = {changed: true};\r\n');
       const featureChange = run();
       expect(featureChange.identity).toMatchObject({ host: expected, dirty: true });

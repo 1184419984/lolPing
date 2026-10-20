@@ -24,7 +24,7 @@ export default defineConfig({
       rollupOptions: {
         input: {
           overlay: resolve('src/preload/overlay.ts'), settings: resolve('src/preload/settings.ts'),
-          chat: resolve('src/preload/chat.ts'),
+          chat: resolve('src/preload/chat.ts'), game: resolve('src/preload/game.ts'),
         },
         output: { format: 'cjs', entryFileNames: '[name].js' },
       },
@@ -40,6 +40,7 @@ export default defineConfig({
           overlay: resolve('src/renderer/overlay/index.html'),
           settings: resolve('src/renderer/settings/index.html'),
           chat: resolve('src/renderer/chat/index.html'),
+          game: resolve('src/renderer/game/index.html'),
         },
       },
     },

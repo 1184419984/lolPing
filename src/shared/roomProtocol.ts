@@ -5,6 +5,7 @@ import { validateChatText } from './chat';
 import { isVersion } from './update';
 import { GIT_COMMIT } from './hotUpdate';
 import { MODULE_HASH, MODULE_ID, MODULE_KEY, moduleJson } from './modules';
+import { validateGamePacket, type GamePacket } from './game';
 
 /** Bumped when room messages change incompatibly. Peers on another version are shown as "needs update". */
 export const PROTOCOL_VERSION = 1;
@@ -33,6 +34,7 @@ export interface PresenceMsg extends Base {
   /** Added in 0.5.2: the 32-hex hashes of the custom emotes on our wheel and centre, at most 9. Older apps leave it out. */
   em: string[];
   commit?: string;
+  game?: 1;
 }
 export interface PingMsg extends Base {
   t: 'ping';
@@ -83,7 +85,8 @@ export interface UpdateMsg extends Base {
 }
 export interface HotMsg extends Base { t: 'hot'; repository: string; commit: string; digest: string }
 export interface FeatureMsg extends Base { t: 'feature'; module: string; commit: string; topic: string; data: unknown }
-export type RoomMessage = PresenceMsg | PingMsg | EmoteMsg | WantMsg | ChunkMsg | ByeMsg | ChatMsg | UpdateMsg | HotMsg | FeatureMsg;
+export interface GameMsg extends Base { t: 'game'; gameId: string; kind: GamePacket['kind']; data: unknown }
+export type RoomMessage = PresenceMsg | PingMsg | EmoteMsg | WantMsg | ChunkMsg | ByeMsg | ChatMsg | UpdateMsg | HotMsg | FeatureMsg | GameMsg;
 
 // C0/C1 controls, zero-width characters, bidi marks, embeddings and isolates, BOM, line/paragraph separators,
 // soft hyphen, combining grapheme joiner, Arabic letter mark, Mongolian vowel separator and the Hangul fillers
@@ -135,6 +138,7 @@ export function validateMessage(raw: unknown): RoomMessage | null {
       if (!isUint(proto) || typeof app !== 'string' || app.length > MAX_APP_VERSION || typeof name !== 'string') return null;
       if (!isTagColor(color) || !STATUSES.includes(status as MemberStatus)) return null;
       return { t, ...base, proto, app, name: sanitizeName(name.slice(0, 256)), color, status: status as MemberStatus, em: emList(em),
+        ...(raw.game === 1 ? { game: 1 as const } : {}),
         ...(typeof raw.commit === 'string' && GIT_COMMIT.test(raw.commit) ? { commit: raw.commit } : {}) };
     }
     case 'ping': {
@@ -187,6 +191,10 @@ export function validateMessage(raw: unknown): RoomMessage | null {
       if (typeof module !== 'string' || !MODULE_ID.test(module) || typeof topic !== 'string' || !MODULE_KEY.test(topic)) return null;
       if (typeof commit !== 'string' || !GIT_COMMIT.test(commit) || moduleJson(data, 400) === null) return null;
       return { t, ...base, module, commit, topic, data };
+    }
+    case 'game': {
+      const packet = validateGamePacket({ gameId: raw.gameId, kind: raw.kind, data: raw.data });
+      return packet ? { t, ...base, ...packet } : null;
     }
     default:
       return null;

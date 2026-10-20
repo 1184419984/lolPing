@@ -97,3 +97,18 @@ Accessibility to be granted again. See [hot-updates.md](hot-updates.md) for the 
 - Accessibility must be granted again after every update (ad-hoc signatures change with each build).
 - Windows of apps running with elevated privileges and the login window can't be pinged over; some full-screen games draw above the overlay.
 - Single-window screen sharing doesn't include the pings.
+
+## 7. Game center
+
+The game catalog and declarative surfaces share the same isolated QuickJS game workers as Windows. Compatible
+catalog, layout and rule changes use Git hot updates; adding a native or renderer API needs an installer. Changed
+game packs cancel unfinished matches without restarting the host or reconnecting rooms. No macOS hook code changes.
+
+The game center uses a normal focused window, not an overlay. Focus suspends the event-tap helper; blur, close and
+renderer failure release it. Incoming room invitations show only a passive toast. The same local-time tasks, room consent,
+bounded packets and result rules apply on both platforms. macOS runtime verification still requires a real Mac.
+
+Chinese Draw and guess, Tic-tac-toe, Four in a row and Chess now use the local grid/canvas surfaces and shared isolated
+session workers. Session play continues after blur, while the helper resumes for the app underneath. Invitations still
+require explicit consent. No current catalog game opens a website or adds a network host. Legacy web descriptors stay
+sandboxed for compatibility. No macOS native input code changes are needed.

@@ -2,7 +2,7 @@ import { Button, Input, Slider, Spinner } from '@fluentui/react-components';
 import {
   ArrowSync24Regular, Chat24Regular, Color24Regular, Desktop24Regular, Globe24Regular, Image24Regular, Person24Regular, PeopleCommunity24Regular,
   SpeakerMute24Regular, TopSpeed24Regular, Warning24Regular,
-  ArrowDownload24Regular,
+  ArrowDownload24Regular, Games24Regular,
 } from '@fluentui/react-icons';
 import { useEffect, useRef, useState } from 'react';
 import type { RoomMember, RoomState } from '../../../shared/room';
@@ -89,6 +89,7 @@ function MemberRow({ m }: { m: RoomMember }) {
         {m.name}
         {m.self ? <span className="desc inline">({t.roomYou})</span> : null}
         {m.noEmotes ? <span className="desc">{t.memberOldNoEmotes}</span> : null}
+        {!m.self && m.game !== 1 ? <span className="desc">{t.gameUnavailable}</span> : null}
         {m.commit ? <span className="desc">{t.hotCommit}: {m.commit.slice(0, 12)}</span> : null}
       </span>
       {m.self ? null : <span className={`badge ${m.path}`}>{t.roomPath[m.path]}</span>}
@@ -132,6 +133,9 @@ function InRoom({ room, allowInternet }: { room: RoomState; allowInternet: boole
       </div>
       <SettingRow icon={<Chat24Regular />} title={t.chatTitle} description={t.chatShortcutHint}>
         <Button onClick={() => void api.openChat()}>{t.chatOpen}</Button>
+      </SettingRow>
+      <SettingRow icon={<Games24Regular />} title={t.gameTitle} description={t.gameResultNote}>
+        <Button appearance="primary" onClick={() => void api.openGameCenter()}>{t.gameOpen}</Button>
       </SettingRow>
       {room.lan === 'unavailable' ? (
         <div className="card permission">

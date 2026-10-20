@@ -40,6 +40,7 @@ const SECTIONS: { id: string; label: (t: Strings) => string; icon: ReactNode }[]
   { id: 'emotes', label: (t) => t.navEmotes, icon: <Emoji24Regular /> },
   { id: 'room', label: (t) => t.navRoom, icon: <PeopleCommunity24Regular /> },
   { id: 'health', label: (t) => t.navHealth, icon: <Heart24Regular /> },
+  { id: 'games', label: (t) => t.navGames, icon: <Games24Regular /> },
   { id: 'app', label: (t) => t.navApp, icon: <Settings24Regular /> },
 ];
 
@@ -204,6 +205,11 @@ function SettingsPage({ settings: s, status, update }: { settings: Settings; sta
 
         <div className="section" id="room">{t.navRoom}</div>
         <RoomSection settings={s} update={update} />
+
+        <div className="section" id="games">{t.navGames}</div>
+        <SettingRow icon={<Games24Regular />} title={t.gameTalent} description={t.gameResultNote}>
+          <Button icon={<Games24Regular />} appearance="primary" onClick={() => void api.openGameCenter()}>{t.gameOpen}</Button>
+        </SettingRow>
 
         <div className="section" id="health">{t.navHealth}</div>
         <SwitchRow icon={<Heart24Regular />} title={t.hydrationEnabled}

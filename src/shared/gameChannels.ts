@@ -1,0 +1,17 @@
+export const GAME_CH = {
+  get: 'game:get',
+  changed: 'game:changed',
+  start: 'game:start',
+  accept: 'game:accept',
+  decline: 'game:decline',
+  begin: 'game:begin',
+  cancel: 'game:cancel',
+  openStage: 'game:openStage',
+  input: 'game:input',
+  stopStage: 'game:stopStage',
+  openWeb: 'game:openWeb',
+  inviteWeb: 'game:inviteWeb',
+  session: 'game:session',
+  sessionChanged: 'game:sessionChanged',
+  sessionAction: 'game:sessionAction',
+} as const;
