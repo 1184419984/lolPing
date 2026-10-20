@@ -24,6 +24,11 @@ definitions are excluded. i18n is compiled into the catalog for feature labels a
 the installed build's text. Host code, dependencies, native helpers and bundled assets must match, otherwise an
 installer update is required. Put new feature media in the feature bundle, not in host assets.
 
+Build identity is captured at startup, not updated when Git changes underneath a running app. After committing and
+pushing development changes, restart `npm run dev` from the clean checkout before publishing. electron-vite's
+timestamped `electron.vite.config.<timestamp>.mjs` loader file is ignored so it cannot falsely mark that build dirty;
+real source changes and other untracked files still block publication.
+
 ## Script contract
 
 The catalog has a manifest for each script named `src/features/<id>.js`. Modules have stable IDs, bilingual

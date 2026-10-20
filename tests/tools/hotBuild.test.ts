@@ -25,6 +25,7 @@ describe('hotBuild', () => {
       git('init', '-b', 'main'); git('config', 'user.name', 'Test'); git('config', 'user.email', 'test@example.invalid');
       git('config', 'core.autocrlf', 'false');
       await writeFile(join(checkout, '.gitattributes'), '*.js text eol=crlf\n');
+      await writeFile(join(checkout, '.gitignore'), await readFile('.gitignore'));
       await writeFile(join(checkout, 'package.json'), '{"name":"fixture"}\n');
       await writeFile(join(checkout, 'src', 'main', 'index.ts'), 'export const host = 1;\n');
       const script = 'globalThis.feature = {};\r\n';
@@ -42,6 +43,14 @@ describe('hotBuild', () => {
       const clean = run();
       expect(clean.identity).toEqual({ commit: git('rev-parse', 'HEAD'), host: expected, dirty: false });
       expect(JSON.parse(clean.bundle)).toMatchObject({ modules: FEATURE_CATALOG.map(() => ({ script: script.replace(/\r\n/g, '\n') })) });
+      // electron-vite imports a timestamped config bundle while the identity is captured.
+      await writeFile(join(checkout, 'electron.vite.config.1792494000000.mjs'), 'export default {};\n');
+      expect(run().identity).toEqual(clean.identity);
+      expect(git('status', '--porcelain')).toBe('');
+      const extra = join(checkout, 'uncommitted.ts');
+      await writeFile(extra, 'export const local = true;\n');
+      expect(run().identity.dirty).toBe(true);
+      await rm(extra);
       await writeFile(join(checkout, 'src', 'features', 'hydration.js'), 'globalThis.feature = {changed: true};\r\n');
       const featureChange = run();
       expect(featureChange.identity).toMatchObject({ host: expected, dirty: true });

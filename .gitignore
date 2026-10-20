@@ -1,4 +1,5 @@
 node_modules/
+/electron.vite.config.[0-9]*.mjs
 out/
 dist/
 release/
